@@ -1,0 +1,13 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+
+# safety net — never commit any env file from anywhere in the repo
+.env
+.env.local
+.env.*.local
+
+# dev server output logs (not part of the app)
+*.log

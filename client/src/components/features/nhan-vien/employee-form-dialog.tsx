@@ -1,0 +1,187 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { CrudFormDialog } from '@/components/features/danh-muc/crud-form-dialog';
+import { SimpleSelect } from '@/components/ui/simple-select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { selectablePositions } from '@/lib/position-utils';
+import type { Branch, Department, Level, Position } from '@/types';
+
+interface FormState {
+  code: string;
+  name: string;
+  phone: string;
+  branchId: string;
+  departmentId: string;
+  positionId: string;
+  levelId: string;
+  employeeType: 'FULL_TIME' | 'PART_TIME';
+  salaryRate: string;
+}
+
+const emptyForm: FormState = {
+  code: '',
+  name: '',
+  phone: '',
+  branchId: '',
+  departmentId: '',
+  positionId: '',
+  levelId: 'none',
+  employeeType: 'FULL_TIME',
+  salaryRate: '',
+};
+
+interface Props {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  branches: Branch[];
+  departments: Department[];
+  positions: Position[];
+  levels: Level[];
+  onSubmit: (input: unknown) => Promise<void>;
+}
+
+export function EmployeeFormDialog({
+  open,
+  onOpenChange,
+  branches,
+  departments,
+  positions,
+  levels,
+  onSubmit,
+}: Props) {
+  const [form, setForm] = useState<FormState>(emptyForm);
+
+  useEffect(() => {
+    if (open) {
+      setForm({
+        ...emptyForm,
+        branchId: branches[0]?.id ?? '',
+        departmentId: departments[0]?.id ?? '',
+        positionId: selectablePositions(positions)[0]?.id ?? '',
+      });
+    }
+  }, [open, branches, departments, positions]);
+
+  const handleSubmit = async () => {
+    await onSubmit({
+      code: form.code,
+      name: form.name,
+      phone: form.phone || undefined,
+      branchId: form.branchId,
+      departmentId: form.departmentId,
+      positionId: form.positionId,
+      levelId: form.levelId === 'none' ? undefined : form.levelId,
+      employeeType: form.employeeType,
+      salaryRate: form.salaryRate === '' ? undefined : Number(form.salaryRate),
+    });
+  };
+
+  return (
+    <CrudFormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Thêm nhân viên"
+      onSubmit={handleSubmit}
+    >
+      <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor="code">Mã nhân viên</Label>
+          <Input
+            id="code"
+            value={form.code}
+            onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
+            required
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="phone">Số điện thoại</Label>
+          <Input
+            id="phone"
+            value={form.phone}
+            onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-2">
+        <Label htmlFor="name">Họ và tên</Label>
+        <Input
+          id="name"
+          value={form.name}
+          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+          required
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-2">
+          <Label>Chi nhánh</Label>
+          <SimpleSelect
+            value={form.branchId}
+            onValueChange={(v) => setForm((f) => ({ ...f, branchId: v }))}
+            options={branches.map((b) => ({ value: b.id, label: b.name }))}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label>Bộ phận</Label>
+          <SimpleSelect
+            value={form.departmentId}
+            onValueChange={(v) => setForm((f) => ({ ...f, departmentId: v }))}
+            options={departments.map((d) => ({ value: d.id, label: d.name }))}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-2">
+          <Label>Chức vụ</Label>
+          <SimpleSelect
+            value={form.positionId}
+            onValueChange={(v) => setForm((f) => ({ ...f, positionId: v }))}
+            options={selectablePositions(positions).map((p) => ({ value: p.id, label: p.name }))}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label>Level</Label>
+          <SimpleSelect
+            value={form.levelId}
+            onValueChange={(v) => setForm((f) => ({ ...f, levelId: v }))}
+            options={[
+              { value: 'none', label: 'Chưa xếp level' },
+              ...levels.map((l) => ({ value: l.id, label: l.name })),
+            ]}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-2">
+          <Label>Loại nhân viên</Label>
+          <SimpleSelect
+            value={form.employeeType}
+            onValueChange={(v) =>
+              setForm((f) => ({ ...f, employeeType: v as FormState['employeeType'] }))
+            }
+            options={[
+              { value: 'FULL_TIME', label: 'Full-time' },
+              { value: 'PART_TIME', label: 'Part-time' },
+            ]}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="salaryRate">
+            {form.employeeType === 'PART_TIME' ? 'Mức lương (VNĐ/giờ)' : 'Mức lương (VNĐ/tháng)'}
+          </Label>
+          <Input
+            id="salaryRate"
+            type="number"
+            value={form.salaryRate}
+            onChange={(e) => setForm((f) => ({ ...f, salaryRate: e.target.value }))}
+          />
+        </div>
+      </div>
+    </CrudFormDialog>
+  );
+}

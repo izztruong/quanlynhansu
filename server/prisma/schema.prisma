@@ -1,0 +1,380 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Neon: DATABASE_URL is the pooled (PgBouncer) connection for the running
+  // app; migrations need a direct connection (pooled transaction mode
+  // doesn't support the advisory locks Prisma Migrate uses). Both come from
+  // the same Neon project — see the deploy guide.
+  directUrl = env("DIRECT_URL")
+}
+
+enum RecordStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum EmployeeStatus {
+  WORKING
+  TERMINATED
+}
+
+enum EmployeeType {
+  FULL_TIME
+  PART_TIME
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum AttendanceStatus {
+  ON_TIME
+  LATE
+  MISSED_CHECKIN
+  MISSED_CHECKOUT
+  NOT_YET
+  PENDING_APPROVAL
+  ON_LEAVE
+}
+
+enum EmployeeGroupScope {
+  ALL
+  FULL_TIME
+  PART_TIME
+  SPECIFIC
+}
+
+model Branch {
+  id        String       @id @default(cuid())
+  name      String
+  address   String?
+  // Office WiFi registered by an admin, used to verify mobile check-in/out.
+  // BSSID is currently only read on Android — the app's WiFi library doesn't
+  // implement iOS BSSID reading yet — so verification falls back to
+  // SSID-only there until that's added.
+  wifiSsid  String?
+  wifiBssid String?
+  status    RecordStatus @default(ACTIVE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  employees     Employee[]
+  news          News[]
+  notifications NotificationBranch[]
+
+  @@map("branches")
+}
+
+model Department {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  status      RecordStatus @default(ACTIVE)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  employees        Employee[]
+  shiftDepartments ShiftDepartment[]
+  news             News[]
+  notifications    NotificationDepartment[]
+
+  @@map("departments")
+}
+
+model Position {
+  id            String       @id @default(cuid())
+  name          String
+  description   String?
+  accessScopes  String[]     @default([])
+  status        RecordStatus @default(ACTIVE)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  employees Employee[]
+
+  @@map("positions")
+}
+
+model Level {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  imageUrl    String?
+  status      RecordStatus @default(ACTIVE)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  employees Employee[]
+
+  @@map("levels")
+}
+
+model Shift {
+  id                        String       @id @default(cuid())
+  name                      String
+  startTime                 String
+  endTime                   String
+  appliesToAllDepartments   Boolean      @default(true)
+  status                    RecordStatus @default(ACTIVE)
+  createdAt                 DateTime     @default(now())
+  updatedAt                 DateTime     @updatedAt
+
+  departments ShiftDepartment[]
+  schedules   Schedule[]
+  attendances Attendance[]
+
+  @@map("shifts")
+}
+
+model ShiftDepartment {
+  shiftId      String
+  departmentId String
+
+  shift      Shift      @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@id([shiftId, departmentId])
+  @@map("shift_departments")
+}
+
+model Employee {
+  id           String         @id @default(cuid())
+  code         String         @unique
+  name         String
+  phone        String?
+  avatarUrl    String?
+  employeeType EmployeeType   @default(FULL_TIME)
+  status       EmployeeStatus @default(WORKING)
+  email        String?        @unique
+  passwordHash String?
+
+  // Đơn vị tính theo employeeType: PART_TIME nhập theo giờ, FULL_TIME nhập
+  // theo tháng — cùng 1 trường số, UI tự đổi nhãn theo employeeType.
+  salaryRate Int?
+
+  dateOfBirth       DateTime? @db.Date
+  gender            Gender?
+  permanentAddress  String?
+  currentAddress    String?
+  bankName          String?
+  bankAccountNumber String?
+  idNumber          String?
+  idIssueDate       DateTime? @db.Date
+  idIssuePlace      String?
+  // Object keys in R2 — resolved to a short-lived signed URL on read since
+  // the bucket is private (ID card photos shouldn't be publicly accessible).
+  idFrontImageKey   String?
+  idBackImageKey    String?
+  hireDate          DateTime? @db.Date
+
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  branchId     String
+  departmentId String
+  positionId   String
+  levelId      String?
+
+  branch     Branch      @relation(fields: [branchId], references: [id])
+  department Department  @relation(fields: [departmentId], references: [id])
+  position   Position    @relation(fields: [positionId], references: [id])
+  level      Level?      @relation(fields: [levelId], references: [id])
+
+  schedules       Schedule[]
+  attendances     Attendance[]
+  notifications   NotificationEmployee[]
+  evaluationForms EvaluationForm[]
+  sessions        Session[]
+
+  @@map("employees")
+}
+
+// One row per login — the JWT carries this row's id (sessionId), so
+// requireAuth can check the session still exists (revoked = deleted row)
+// instead of only trusting the token signature. This is what makes "xem
+// thiết bị đã đăng nhập" + "đăng xuất từ xa" possible.
+model Session {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  platform   String // 'web' | 'mobile'
+  deviceInfo String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@index([employeeId])
+  @@map("sessions")
+}
+
+enum EvaluationSection {
+  RECENT_TEST
+  MANAGER_REVIEW
+  SUPERVISOR_REVIEW
+  SURPRISE_INSPECTION
+  DIRECT_INTERVIEW
+  STORE_ENGAGEMENT
+}
+
+enum AttachmentType {
+  IMAGE
+  VIDEO
+}
+
+// A "phiếu đánh giá" is a single submission event bundling all 6
+// evaluation sections together; an employee can have many of these over
+// time, and "gần nhất" (latest) is just the most recent by createdAt.
+model EvaluationForm {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  // 1. Tác phong và tinh thần — nhập tay, không có ảnh/video kèm theo.
+  shiftsWorkedInMonth     Int?
+  lateMinutesInMonth      Int?
+  shiftChangeCount        Int?
+  missedCheckInOutCount   Int?
+  disciplinaryReportCount Int?
+
+  // 2. Năng lực chuyên môn và tư duy / 3. Khả năng gắn bó, hòa đồng
+  recentTestNote         String?
+  managerReviewText      String?
+  supervisorReviewText   String?
+  surpriseInspectionText String?
+  interviewText          String?
+  storeEngagementText    String?
+
+  attachments EvaluationAttachment[]
+
+  @@index([employeeId, createdAt])
+  @@map("evaluation_forms")
+}
+
+// One row per uploaded file — a section can have any number of images
+// and/or videos (e.g. "giám sát bất chợt" allows multiple of each).
+model EvaluationAttachment {
+  id        String            @id @default(cuid())
+  formId    String
+  form      EvaluationForm    @relation(fields: [formId], references: [id], onDelete: Cascade)
+  section   EvaluationSection
+  type      AttachmentType
+  key       String
+  createdAt DateTime          @default(now())
+
+  @@map("evaluation_attachments")
+}
+
+model Schedule {
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  employeeId String
+  shiftId    String
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  shift    Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, shiftId, date])
+  @@map("schedules")
+}
+
+model Attendance {
+  id               String           @id @default(cuid())
+  date             DateTime         @db.Date
+  checkIn          DateTime?
+  checkOut         DateTime?
+  status           AttendanceStatus @default(NOT_YET)
+  checkInLat       Float?
+  checkInLng       Float?
+  checkInWifiSsid  String?
+  checkInWifiBssid String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  shiftId String?
+  shift   Shift?  @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+
+  @@index([employeeId, date])
+  @@map("attendance")
+}
+
+model News {
+  id               String       @id @default(cuid())
+  title            String
+  thumbnailUrl     String?
+  content          String?
+  viewCount        Int          @default(0)
+  status           RecordStatus @default(ACTIVE)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  branchId     String?
+  departmentId String?
+
+  branch     Branch?     @relation(fields: [branchId], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id])
+
+  @@map("news")
+}
+
+model Notification {
+  id                      String              @id @default(cuid())
+  title                   String
+  content                 String
+  appliesToAllBranches    Boolean             @default(true)
+  appliesToAllDepartments Boolean             @default(true)
+  employeeGroupScope      EmployeeGroupScope  @default(ALL)
+  status                  RecordStatus        @default(ACTIVE)
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+
+  branches          NotificationBranch[]
+  departments       NotificationDepartment[]
+  specificEmployees NotificationEmployee[]
+
+  @@map("notifications")
+}
+
+model NotificationBranch {
+  notificationId String
+  branchId       String
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  branch       Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@id([notificationId, branchId])
+  @@map("notification_branches")
+}
+
+model NotificationDepartment {
+  notificationId String
+  departmentId   String
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  department   Department   @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@id([notificationId, departmentId])
+  @@map("notification_departments")
+}
+
+model NotificationEmployee {
+  notificationId String
+  employeeId     String
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  employee     Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@id([notificationId, employeeId])
+  @@map("notification_employees")
+}
