@@ -230,7 +230,9 @@ export default function NhanVienPage() {
                     </div>
                     <div className="min-w-0">
                       <div className="truncate font-medium">{employee.name}</div>
-                      <div className="text-xs text-muted-foreground">{employee.code}</div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {employee.email ?? '-'}
+                      </div>
                     </div>
                   </div>
                 </TableCell>

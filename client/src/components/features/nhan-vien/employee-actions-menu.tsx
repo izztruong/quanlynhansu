@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api } from '@/lib/api-client';
 import { selectablePositions } from '@/lib/position-utils';
+import { activeOnly } from '@/lib/record-utils';
 import type { Branch, Employee, Position } from '@/types';
 
 type DialogKind = 'type' | 'position' | 'branch' | 'terminate' | null;
@@ -150,7 +151,7 @@ export function EmployeeActionsMenu({ employee, branches, positions, onChanged }
           <SimpleSelect
             value={branchId}
             onValueChange={setBranchId}
-            options={branches.map((b) => ({ value: b.id, label: b.name }))}
+            options={activeOnly(branches).map((b) => ({ value: b.id, label: b.name }))}
           />
         </div>
       </CrudFormDialog>

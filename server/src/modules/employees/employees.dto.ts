@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const createEmployeeSchema = z.object({
   code: z.string().min(1, 'Thiếu mã nhân viên'),
   name: z.string().min(1, 'Tên nhân viên không được để trống'),
+  email: z.string().email('Email không hợp lệ').optional(),
   phone: z.string().optional(),
   avatarUrl: z.string().optional(),
   branchId: z.string().min(1, 'Thiếu chi nhánh'),

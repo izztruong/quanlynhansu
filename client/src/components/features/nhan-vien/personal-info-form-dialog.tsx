@@ -11,6 +11,7 @@ import type { Employee, Gender } from '@/types';
 
 interface FormState {
   name: string;
+  email: string;
   phone: string;
   dateOfBirth: string;
   gender: Gender | 'unset';
@@ -24,6 +25,7 @@ interface FormState {
 function toFormState(employee: Employee): FormState {
   return {
     name: employee.name,
+    email: employee.email ?? '',
     phone: employee.phone ?? '',
     dateOfBirth: employee.dateOfBirth?.slice(0, 10) ?? '',
     gender: employee.gender ?? 'unset',
@@ -50,8 +52,10 @@ export function PersonalInfoFormDialog({ open, onOpenChange, employee, onChanged
   }, [open, employee]);
 
   const handleSubmit = async () => {
+    const grantingLogin = Boolean(form.email) && !employee.email;
     await api.put(`/employees/${employee.id}`, {
       name: form.name,
+      email: form.email || undefined,
       phone: form.phone || undefined,
       dateOfBirth: form.dateOfBirth || undefined,
       gender: form.gender === 'unset' ? undefined : form.gender,
@@ -62,6 +66,9 @@ export function PersonalInfoFormDialog({ open, onOpenChange, employee, onChanged
       bankAccountNumber: form.bankAccountNumber || undefined,
     });
     toast.success('Đã cập nhật thông tin cơ bản');
+    if (grantingLogin) {
+      toast.info('Đã cấp tài khoản đăng nhập — mật khẩu mặc định: 123456');
+    }
     onChanged();
   };
 
@@ -81,6 +88,23 @@ export function PersonalInfoFormDialog({ open, onOpenChange, employee, onChanged
           onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
           required
         />
+      </div>
+
+      <div className="grid gap-2">
+        <Label htmlFor="pi-email">Email</Label>
+        <Input
+          id="pi-email"
+          type="email"
+          value={form.email}
+          onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+          placeholder="nhanvien@congty.com"
+        />
+        {!employee.email && (
+          <p className="text-xs text-muted-foreground">
+            Chưa có tài khoản đăng nhập. Điền email để cấp tài khoản, mật khẩu mặc định{' '}
+            <span className="font-medium">123456</span>.
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">

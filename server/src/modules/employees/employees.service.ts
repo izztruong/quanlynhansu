@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import { prisma } from '@/config/prisma';
 import { NotFoundError } from '@/common/errors';
 import { uploadsService } from '@/modules/uploads/uploads.service';
@@ -10,6 +11,11 @@ const include = {
   position: true,
   level: true,
 };
+
+// Matches the seed script's convention — an employee gains web/mobile login
+// the moment an admin gives them an email, so they need a real password
+// hash immediately; they can change it via "Bảo mật tài khoản" afterward.
+const DEFAULT_PASSWORD = '123456';
 
 // Date-only strings from the client ("YYYY-MM-DD") parse as UTC midnight per
 // the JS spec, matching how @db.Date columns are normalized — do not use
@@ -163,15 +169,34 @@ export const employeesService = {
     return withImageUrls(employee);
   },
 
-  create(data: CreateEmployeeInput) {
-    return prisma.employee.create({ data: withParsedDates(data), include });
+  async create(data: CreateEmployeeInput) {
+    const passwordHash = data.email ? await bcrypt.hash(DEFAULT_PASSWORD, 10) : undefined;
+    return prisma.employee.create({
+      data: { ...withParsedDates(data), passwordHash },
+      include,
+    });
   },
 
   async update(id: string, data: UpdateEmployeeInput) {
     const existing = await this.getById(id);
+
+    // Only assign the default password the first time an email is set — if
+    // they already have a real passwordHash, leave it untouched so editing
+    // the email later doesn't silently reset a password back to default.
+    let passwordHash: string | undefined;
+    if (data.email) {
+      const withPassword = await prisma.employee.findUnique({
+        where: { id },
+        omit: { passwordHash: false },
+      });
+      if (!withPassword?.passwordHash) {
+        passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
+      }
+    }
+
     const updated = await prisma.employee.update({
       where: { id },
-      data: withParsedDates(data),
+      data: { ...withParsedDates(data), passwordHash },
       include,
     });
 

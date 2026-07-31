@@ -1,16 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { CrudFormDialog } from '@/components/features/danh-muc/crud-form-dialog';
 import { SimpleSelect } from '@/components/ui/simple-select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { selectablePositions } from '@/lib/position-utils';
+import { activeOnly } from '@/lib/record-utils';
 import type { Branch, Department, Level, Position } from '@/types';
 
 interface FormState {
   code: string;
   name: string;
+  email: string;
   phone: string;
   branchId: string;
   departmentId: string;
@@ -23,6 +26,7 @@ interface FormState {
 const emptyForm: FormState = {
   code: '',
   name: '',
+  email: '',
   phone: '',
   branchId: '',
   departmentId: '',
@@ -57,8 +61,8 @@ export function EmployeeFormDialog({
     if (open) {
       setForm({
         ...emptyForm,
-        branchId: branches[0]?.id ?? '',
-        departmentId: departments[0]?.id ?? '',
+        branchId: activeOnly(branches)[0]?.id ?? '',
+        departmentId: activeOnly(departments)[0]?.id ?? '',
         positionId: selectablePositions(positions)[0]?.id ?? '',
       });
     }
@@ -68,6 +72,7 @@ export function EmployeeFormDialog({
     await onSubmit({
       code: form.code,
       name: form.name,
+      email: form.email || undefined,
       phone: form.phone || undefined,
       branchId: form.branchId,
       departmentId: form.departmentId,
@@ -76,6 +81,9 @@ export function EmployeeFormDialog({
       employeeType: form.employeeType,
       salaryRate: form.salaryRate === '' ? undefined : Number(form.salaryRate),
     });
+    if (form.email) {
+      toast.info('Đã cấp tài khoản đăng nhập — mật khẩu mặc định: 123456');
+    }
   };
 
   return (
@@ -115,13 +123,29 @@ export function EmployeeFormDialog({
         />
       </div>
 
+      <div className="grid gap-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          value={form.email}
+          onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+          placeholder="nhanvien@congty.com"
+        />
+        <p className="text-xs text-muted-foreground">
+          Để trống nếu nhân viên chưa cần tài khoản đăng nhập. Có email, hệ thống tự cấp mật khẩu
+          mặc định <span className="font-medium">123456</span> — nhân viên tự đổi sau tại "Bảo mật
+          tài khoản".
+        </p>
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-2">
           <Label>Chi nhánh</Label>
           <SimpleSelect
             value={form.branchId}
             onValueChange={(v) => setForm((f) => ({ ...f, branchId: v }))}
-            options={branches.map((b) => ({ value: b.id, label: b.name }))}
+            options={activeOnly(branches).map((b) => ({ value: b.id, label: b.name }))}
           />
         </div>
         <div className="grid gap-2">
@@ -129,7 +153,7 @@ export function EmployeeFormDialog({
           <SimpleSelect
             value={form.departmentId}
             onValueChange={(v) => setForm((f) => ({ ...f, departmentId: v }))}
-            options={departments.map((d) => ({ value: d.id, label: d.name }))}
+            options={activeOnly(departments).map((d) => ({ value: d.id, label: d.name }))}
           />
         </div>
       </div>
@@ -150,7 +174,7 @@ export function EmployeeFormDialog({
             onValueChange={(v) => setForm((f) => ({ ...f, levelId: v }))}
             options={[
               { value: 'none', label: 'Chưa xếp level' },
-              ...levels.map((l) => ({ value: l.id, label: l.name })),
+              ...activeOnly(levels).map((l) => ({ value: l.id, label: l.name })),
             ]}
           />
         </div>
