@@ -162,6 +162,7 @@ export default function NhanVienPage() {
           <colgroup>
             <col style={{ width: COL.index }} />
             <col style={{ width: COL.employee }} />
+            <col style={{ width: 130 }} />
             <col style={{ width: 140 }} />
             <col style={{ width: 180 }} />
             <col style={{ width: 150 }} />
@@ -184,6 +185,7 @@ export default function NhanVienPage() {
               >
                 Nhân viên
               </TableHead>
+              <TableHead>Mã nhân viên</TableHead>
               <TableHead>SĐT</TableHead>
               <TableHead>Chi nhánh</TableHead>
               <TableHead>Bộ phận</TableHead>
@@ -198,14 +200,14 @@ export default function NhanVienPage() {
           <TableBody>
             {loading && (
               <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
                   Đang tải dữ liệu...
                 </TableCell>
               </TableRow>
             )}
             {!loading && totalCount === 0 && (
               <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
                   {employees.length === 0
                     ? 'Chưa có nhân viên'
                     : 'Không tìm thấy nhân viên phù hợp'}
@@ -236,6 +238,7 @@ export default function NhanVienPage() {
                     </div>
                   </div>
                 </TableCell>
+                <TableCell className="truncate">{employee.code}</TableCell>
                 <TableCell>{employee.phone || '-'}</TableCell>
                 <TableCell className="truncate">{employee.branch.name}</TableCell>
                 <TableCell>{employee.department.name}</TableCell>

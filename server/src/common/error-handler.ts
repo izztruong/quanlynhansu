@@ -15,8 +15,12 @@ export function errorHandler(
   _next: NextFunction
 ) {
   if (err instanceof ZodError) {
+    // Zod schemas throughout the app already carry specific Vietnamese
+    // messages per field (e.g. "Thiếu mã nhân viên", "Email không hợp lệ") —
+    // surface the first one instead of a blanket "invalid data" message.
+    const firstIssue = err.issues[0];
     res.status(400).json({
-      message: 'Dữ liệu không hợp lệ',
+      message: firstIssue?.message || 'Dữ liệu không hợp lệ',
       issues: err.issues,
     });
     return;
