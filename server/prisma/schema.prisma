@@ -213,13 +213,18 @@ model Session {
   @@map("sessions")
 }
 
+// The 3 fixed groups a "phiếu đánh giá" is organized into. Fixed by
+// business rule — only the criteria *within* each section are configurable
+// (see EvaluationCriteria), not the sections themselves.
 enum EvaluationSection {
-  RECENT_TEST
-  MANAGER_REVIEW
-  SUPERVISOR_REVIEW
-  SURPRISE_INSPECTION
-  DIRECT_INTERVIEW
-  STORE_ENGAGEMENT
+  WORK_ATTITUDE // 1. Tác phong và tinh thần
+  PROFESSIONAL_COMPETENCE // 2. Năng lực chuyên môn và tư duy
+  TEAM_ENGAGEMENT // 3. Khả năng gắn bó, hòa đồng
+}
+
+enum EvaluationInputType {
+  NUMBER
+  TEXT
 }
 
 enum AttachmentType {
@@ -227,46 +232,68 @@ enum AttachmentType {
   VIDEO
 }
 
-// A "phiếu đánh giá" is a single submission event bundling all 6
-// evaluation sections together; an employee can have many of these over
-// time, and "gần nhất" (latest) is just the most recent by createdAt.
+// A configurable evaluation item (danh mục), managed under Danh mục ->
+// Cấu hình phiếu đánh giá. Deactivating (status = INACTIVE) hides it from
+// new phiếu without touching answers already recorded against it.
+model EvaluationCriteria {
+  id              String              @id @default(cuid())
+  section         EvaluationSection
+  name            String
+  inputType       EvaluationInputType
+  allowAttachment Boolean             @default(false)
+  order           Int                 @default(0)
+  status          RecordStatus        @default(ACTIVE)
+  createdAt       DateTime            @default(now())
+
+  answers     EvaluationAnswer[]
+  attachments EvaluationAttachment[]
+
+  @@index([section, order])
+  @@map("evaluation_criteria")
+}
+
+// A "phiếu đánh giá" is a single submission event; an employee can have
+// many of these over time, and "gần nhất" (latest) is just the most
+// recent by createdAt. Its content lives entirely in EvaluationAnswer,
+// one row per active criteria at the time of submission.
 model EvaluationForm {
   id         String   @id @default(cuid())
   employeeId String
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())
 
-  // 1. Tác phong và tinh thần — nhập tay, không có ảnh/video kèm theo.
-  shiftsWorkedInMonth     Int?
-  lateMinutesInMonth      Int?
-  shiftChangeCount        Int?
-  missedCheckInOutCount   Int?
-  disciplinaryReportCount Int?
-
-  // 2. Năng lực chuyên môn và tư duy / 3. Khả năng gắn bó, hòa đồng
-  recentTestNote         String?
-  managerReviewText      String?
-  supervisorReviewText   String?
-  surpriseInspectionText String?
-  interviewText          String?
-  storeEngagementText    String?
-
+  answers     EvaluationAnswer[]
   attachments EvaluationAttachment[]
 
   @@index([employeeId, createdAt])
   @@map("evaluation_forms")
 }
 
-// One row per uploaded file — a section can have any number of images
-// and/or videos (e.g. "giám sát bất chợt" allows multiple of each).
+model EvaluationAnswer {
+  id         String             @id @default(cuid())
+  formId     String
+  form       EvaluationForm     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  criteriaId String
+  criteria   EvaluationCriteria @relation(fields: [criteriaId], references: [id])
+
+  numberValue Int?
+  textValue   String?
+
+  @@index([formId])
+  @@map("evaluation_answers")
+}
+
+// One row per uploaded file — a criteria with allowAttachment can have any
+// number of images and/or videos attached.
 model EvaluationAttachment {
-  id        String            @id @default(cuid())
-  formId    String
-  form      EvaluationForm    @relation(fields: [formId], references: [id], onDelete: Cascade)
-  section   EvaluationSection
-  type      AttachmentType
-  key       String
-  createdAt DateTime          @default(now())
+  id         String             @id @default(cuid())
+  formId     String
+  form       EvaluationForm     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  criteriaId String
+  criteria   EvaluationCriteria @relation(fields: [criteriaId], references: [id])
+  type       AttachmentType
+  key        String
+  createdAt  DateTime           @default(now())
 
   @@map("evaluation_attachments")
 }

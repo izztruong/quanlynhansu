@@ -121,18 +121,32 @@ export interface News {
   department: Department | null;
 }
 
-export type EvaluationSection =
-  | 'RECENT_TEST'
-  | 'MANAGER_REVIEW'
-  | 'SUPERVISOR_REVIEW'
-  | 'SURPRISE_INSPECTION'
-  | 'DIRECT_INTERVIEW'
-  | 'STORE_ENGAGEMENT';
+export type EvaluationSection = 'WORK_ATTITUDE' | 'PROFESSIONAL_COMPETENCE' | 'TEAM_ENGAGEMENT';
+export type EvaluationInputType = 'NUMBER' | 'TEXT';
 export type AttachmentType = 'IMAGE' | 'VIDEO';
+
+export interface EvaluationCriteria {
+  id: string;
+  section: EvaluationSection;
+  name: string;
+  inputType: EvaluationInputType;
+  allowAttachment: boolean;
+  order: number;
+  status: RecordStatus;
+}
+
+export interface EvaluationAnswer {
+  id: string;
+  criteriaId: string;
+  criteria: EvaluationCriteria;
+  numberValue: number | null;
+  textValue: string | null;
+}
 
 export interface EvaluationAttachment {
   id: string;
-  section: EvaluationSection;
+  criteriaId: string;
+  criteria: EvaluationCriteria;
   type: AttachmentType;
   key: string;
   url: string;
@@ -143,17 +157,7 @@ export interface EvaluationForm {
   employeeId: string;
   employee: Employee;
   createdAt: string;
-  shiftsWorkedInMonth: number | null;
-  lateMinutesInMonth: number | null;
-  shiftChangeCount: number | null;
-  missedCheckInOutCount: number | null;
-  disciplinaryReportCount: number | null;
-  recentTestNote: string | null;
-  managerReviewText: string | null;
-  supervisorReviewText: string | null;
-  surpriseInspectionText: string | null;
-  interviewText: string | null;
-  storeEngagementText: string | null;
+  answers: EvaluationAnswer[];
   attachments: EvaluationAttachment[];
 }
 

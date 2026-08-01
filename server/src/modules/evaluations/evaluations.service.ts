@@ -11,7 +11,8 @@ const employeeInclude = {
 };
 
 const include = {
-  attachments: true,
+  answers: { include: { criteria: true } },
+  attachments: { include: { criteria: true } },
   employee: { include: employeeInclude },
 };
 
@@ -27,10 +28,11 @@ async function withAttachmentUrls<
 }
 
 export const evaluationsService = {
-  create({ attachments, ...rest }: CreateEvaluationInput) {
+  create({ employeeId, answers, attachments }: CreateEvaluationInput) {
     return prisma.evaluationForm.create({
       data: {
-        ...rest,
+        employeeId,
+        answers: answers?.length ? { create: answers } : undefined,
         attachments: attachments?.length ? { create: attachments } : undefined,
       },
       include,

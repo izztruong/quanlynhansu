@@ -11,6 +11,7 @@ import { newsRouter } from '@/modules/news/news.routes';
 import { notificationsRouter } from '@/modules/notifications/notifications.routes';
 import { uploadsRouter } from '@/modules/uploads/uploads.routes';
 import { evaluationsRouter } from '@/modules/evaluations/evaluations.routes';
+import { evaluationCriteriaRouter } from '@/modules/evaluation-criteria/evaluation-criteria.routes';
 
 export const apiRouter = Router();
 
@@ -26,3 +27,4 @@ apiRouter.use('/news', newsRouter);
 apiRouter.use('/notifications', notificationsRouter);
 apiRouter.use('/uploads', uploadsRouter);
 apiRouter.use('/evaluations', evaluationsRouter);
+apiRouter.use('/evaluation-criteria', evaluationCriteriaRouter);

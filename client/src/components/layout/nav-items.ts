@@ -58,6 +58,7 @@ export const navItems: NavItem[] = [
       { label: 'Ca làm việc', href: '/danh-muc/ca-lam-viec' },
       { label: 'Chức vụ', href: '/danh-muc/chuc-vu' },
       { label: 'Level', href: '/danh-muc/level' },
+      { label: 'Cấu hình phiếu đánh giá', href: '/danh-muc/tieu-chi-danh-gia' },
     ],
   },
   { label: 'Cài đặt', href: '/cai-dat', icon: Settings, adminOnly: true },

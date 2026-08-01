@@ -39,6 +39,11 @@ export function errorHandler(
     return;
   }
 
+  if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2003') {
+    res.status(409).json({ message: 'Không thể xóa vì dữ liệu này đang được sử dụng' });
+    return;
+  }
+
   console.error(err);
   res.status(500).json({ message: 'Lỗi hệ thống' });
 }

@@ -8,35 +8,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SimpleSelect } from '@/components/ui/simple-select';
 import { MultiFileUploadField, type UploadedFile } from '@/components/ui/multi-file-upload-field';
-import { EVALUATION_GROUPS, EVALUATION_SECTIONS, type NumericFieldConfig } from '@/lib/evaluation-sections';
+import { EVALUATION_SECTIONS } from '@/lib/evaluation-sections';
+import { activeOnly } from '@/lib/record-utils';
 import { api } from '@/lib/api-client';
-import type { Employee, EvaluationSection } from '@/types';
+import type { Employee, EvaluationCriteria } from '@/types';
 
-interface SectionState {
-  text: string;
+interface AnswerState {
+  numberValue: string;
+  textValue: string;
   images: UploadedFile[];
   videos: UploadedFile[];
-}
-
-type SectionsState = Record<EvaluationSection, SectionState>;
-type NumericState = Record<NumericFieldConfig['key'], string>;
-
-const NUMERIC_KEYS: NumericFieldConfig['key'][] = EVALUATION_GROUPS.flatMap((g) =>
-  g.numericFields.map((f) => f.key)
-);
-
-function emptySections(): SectionsState {
-  return EVALUATION_SECTIONS.reduce((acc, s) => {
-    acc[s.section] = { text: '', images: [], videos: [] };
-    return acc;
-  }, {} as SectionsState);
-}
-
-function emptyNumeric(): NumericState {
-  return NUMERIC_KEYS.reduce((acc, key) => {
-    acc[key] = '';
-    return acc;
-  }, {} as NumericState);
 }
 
 interface Props {
@@ -56,20 +37,28 @@ export function EvaluationFormDialog({
   employees,
   onCreated,
 }: Props) {
-  const [sections, setSections] = useState<SectionsState>(emptySections);
-  const [numeric, setNumeric] = useState<NumericState>(emptyNumeric);
+  const [criteria, setCriteria] = useState<EvaluationCriteria[]>([]);
+  const [answers, setAnswers] = useState<Record<string, AnswerState>>({});
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(employeeId ?? '');
 
   useEffect(() => {
     if (open) {
-      setSections(emptySections());
-      setNumeric(emptyNumeric());
+      api.get<EvaluationCriteria[]>('/evaluation-criteria').then((data) => {
+        const active = activeOnly(data);
+        setCriteria(active);
+        setAnswers(
+          active.reduce((acc, c) => {
+            acc[c.id] = { numberValue: '', textValue: '', images: [], videos: [] };
+            return acc;
+          }, {} as Record<string, AnswerState>)
+        );
+      });
       setSelectedEmployeeId(employeeId ?? employees?.[0]?.id ?? '');
     }
   }, [open, employeeId, employees]);
 
-  const updateSection = (section: EvaluationSection, patch: Partial<SectionState>) => {
-    setSections((s) => ({ ...s, [section]: { ...s[section], ...patch } }));
+  const updateAnswer = (criteriaId: string, patch: Partial<AnswerState>) => {
+    setAnswers((a) => ({ ...a, [criteriaId]: { ...a[criteriaId], ...patch } }));
   };
 
   const handleSubmit = async () => {
@@ -78,29 +67,32 @@ export function EvaluationFormDialog({
       return;
     }
 
-    const attachments = EVALUATION_SECTIONS.flatMap((s) => [
-      ...sections[s.section].images.map((f) => ({ section: s.section, type: 'IMAGE' as const, key: f.key })),
-      ...sections[s.section].videos.map((f) => ({ section: s.section, type: 'VIDEO' as const, key: f.key })),
-    ]);
+    const answerPayload = criteria
+      .filter((c) => {
+        const a = answers[c.id];
+        return c.inputType === 'NUMBER' ? a.numberValue !== '' : a.textValue !== '';
+      })
+      .map((c) => {
+        const a = answers[c.id];
+        return {
+          criteriaId: c.id,
+          numberValue: c.inputType === 'NUMBER' ? Number(a.numberValue) : undefined,
+          textValue: c.inputType === 'TEXT' ? a.textValue : undefined,
+        };
+      });
 
-    const numericPayload = NUMERIC_KEYS.reduce(
-      (acc, key) => {
-        acc[key] = numeric[key] === '' ? undefined : Number(numeric[key]);
-        return acc;
-      },
-      {} as Record<NumericFieldConfig['key'], number | undefined>
-    );
+    const attachmentPayload = criteria.flatMap((c) => {
+      const a = answers[c.id];
+      return [
+        ...a.images.map((f) => ({ criteriaId: c.id, type: 'IMAGE' as const, key: f.key })),
+        ...a.videos.map((f) => ({ criteriaId: c.id, type: 'VIDEO' as const, key: f.key })),
+      ];
+    });
 
     await api.post('/evaluations', {
       employeeId: selectedEmployeeId,
-      ...numericPayload,
-      recentTestNote: sections.RECENT_TEST.text || undefined,
-      managerReviewText: sections.MANAGER_REVIEW.text || undefined,
-      supervisorReviewText: sections.SUPERVISOR_REVIEW.text || undefined,
-      surpriseInspectionText: sections.SURPRISE_INSPECTION.text || undefined,
-      interviewText: sections.DIRECT_INTERVIEW.text || undefined,
-      storeEngagementText: sections.STORE_ENGAGEMENT.text || undefined,
-      attachments,
+      answers: answerPayload,
+      attachments: attachmentPayload,
     });
     toast.success('Đã tạo phiếu đánh giá');
     onCreated();
@@ -125,58 +117,57 @@ export function EvaluationFormDialog({
         </div>
       )}
 
-      {EVALUATION_GROUPS.map((group) => (
-        <div key={group.title} className="grid gap-3 rounded-lg border p-4">
-          <p className="text-base font-semibold">{group.title}</p>
+      {EVALUATION_SECTIONS.map((group) => {
+        const groupCriteria = criteria
+          .filter((c) => c.section === group.value)
+          .sort((a, b) => a.order - b.order);
+        if (groupCriteria.length === 0) return null;
 
-          {group.numericFields.length > 0 && (
-            <div className="grid grid-cols-2 gap-4">
-              {group.numericFields.map((f) => (
-                <div key={f.key} className="grid gap-2">
-                  <Label htmlFor={f.key}>{f.label}</Label>
+        return (
+          <div key={group.value} className="grid gap-3 rounded-lg border p-4">
+            <p className="text-base font-semibold">{group.label}</p>
+
+            {groupCriteria.map((c) => (
+              <div key={c.id} className="grid gap-2">
+                <Label htmlFor={c.id}>{c.name}</Label>
+                {c.inputType === 'NUMBER' ? (
                   <Input
-                    id={f.key}
+                    id={c.id}
                     type="number"
-                    value={numeric[f.key]}
-                    onChange={(e) => setNumeric((n) => ({ ...n, [f.key]: e.target.value }))}
+                    value={answers[c.id]?.numberValue ?? ''}
+                    onChange={(e) => updateAnswer(c.id, { numberValue: e.target.value })}
                   />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {group.sections.map((s) => (
-            <div key={s.section} className="grid gap-3 rounded-lg border p-3">
-              <p className="text-sm font-medium">{s.label}</p>
-              {s.hasText && (
-                <Textarea
-                  placeholder="Nhận xét..."
-                  value={sections[s.section].text}
-                  onChange={(e) => updateSection(s.section, { text: e.target.value })}
-                />
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <MultiFileUploadField
-                  label="Ảnh"
-                  accept="image/*"
-                  folder="evaluations"
-                  files={sections[s.section].images}
-                  onChange={(images) => updateSection(s.section, { images })}
-                />
-                {s.allowVideo && (
-                  <MultiFileUploadField
-                    label="Video"
-                    accept="video/*"
-                    folder="evaluations"
-                    files={sections[s.section].videos}
-                    onChange={(videos) => updateSection(s.section, { videos })}
+                ) : (
+                  <Textarea
+                    id={c.id}
+                    placeholder="Nhận xét..."
+                    value={answers[c.id]?.textValue ?? ''}
+                    onChange={(e) => updateAnswer(c.id, { textValue: e.target.value })}
                   />
                 )}
+                {c.allowAttachment && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <MultiFileUploadField
+                      label="Ảnh"
+                      accept="image/*"
+                      folder="evaluations"
+                      files={answers[c.id]?.images ?? []}
+                      onChange={(images) => updateAnswer(c.id, { images })}
+                    />
+                    <MultiFileUploadField
+                      label="Video"
+                      accept="video/*"
+                      folder="evaluations"
+                      files={answers[c.id]?.videos ?? []}
+                      onChange={(videos) => updateAnswer(c.id, { videos })}
+                    />
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
-        </div>
-      ))}
+            ))}
+          </div>
+        );
+      })}
     </CrudFormDialog>
   );
 }
