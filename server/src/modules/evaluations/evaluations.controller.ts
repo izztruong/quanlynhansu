@@ -28,4 +28,9 @@ export const evaluationsController = {
     const form = await evaluationsService.getLatestForEmployee(req.params.employeeId);
     res.json({ data: form });
   },
+
+  async remove(req: Request, res: Response) {
+    await evaluationsService.remove(req.params.id);
+    res.status(204).send();
+  },
 };

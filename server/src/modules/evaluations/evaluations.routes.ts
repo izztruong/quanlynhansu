@@ -13,3 +13,4 @@ evaluationsRouter.get(
   asyncHandler(evaluationsController.latestForEmployee)
 );
 evaluationsRouter.get('/:id', asyncHandler(evaluationsController.getById));
+evaluationsRouter.delete('/:id', requireAdmin, asyncHandler(evaluationsController.remove));

@@ -134,6 +134,7 @@ export function EvaluationFormDialog({
                   <Input
                     id={c.id}
                     type="number"
+                    step="any"
                     value={answers[c.id]?.numberValue ?? ''}
                     onChange={(e) => updateAnswer(c.id, { numberValue: e.target.value })}
                   />

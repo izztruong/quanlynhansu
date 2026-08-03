@@ -6,7 +6,7 @@ export const createEvaluationSchema = z.object({
     .array(
       z.object({
         criteriaId: z.string().min(1),
-        numberValue: z.number().int().optional(),
+        numberValue: z.number().optional(),
         textValue: z.string().optional(),
       })
     )

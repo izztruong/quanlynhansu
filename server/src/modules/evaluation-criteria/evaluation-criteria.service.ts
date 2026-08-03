@@ -1,5 +1,5 @@
 import { prisma } from '@/config/prisma';
-import { NotFoundError } from '@/common/errors';
+import { ApiError, NotFoundError } from '@/common/errors';
 import type {
   CreateEvaluationCriteriaInput,
   UpdateEvaluationCriteriaInput,
@@ -21,7 +21,22 @@ export const evaluationCriteriaService = {
   },
 
   async update(id: string, data: UpdateEvaluationCriteriaInput) {
-    await this.getById(id);
+    const existing = await this.getById(id);
+
+    // numberValue/textValue are separate columns on EvaluationAnswer —
+    // switching inputType after answers exist would silently orphan
+    // whichever column those answers were written to (the view reads the
+    // column matching the *current* inputType). Lock it once in use.
+    if (data.inputType && data.inputType !== existing.inputType) {
+      const answerCount = await prisma.evaluationAnswer.count({ where: { criteriaId: id } });
+      if (answerCount > 0) {
+        throw new ApiError(
+          409,
+          'Không thể đổi loại giá trị vì tiêu chí đã có dữ liệu trả lời. Hãy tạo tiêu chí mới thay thế.'
+        );
+      }
+    }
+
     return prisma.evaluationCriteria.update({ where: { id }, data });
   },
 

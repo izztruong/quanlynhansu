@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Eye, Search, Plus, ImageIcon, Video } from 'lucide-react';
+import { Eye, Search, Plus, ImageIcon, Video, Trash2 } from 'lucide-react';
 import { usePageTitle } from '@/components/layout/page-title-context';
 import { useCrud } from '@/hooks/use-crud';
 import { usePagination } from '@/hooks/use-pagination';
@@ -18,6 +18,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { EvaluationFormDialog } from '@/components/features/nhan-vien/evaluation-form-dialog';
 import { EvaluationViewDialog } from '@/components/features/nhan-vien/evaluation-view-dialog';
 import type { Branch, Department, Employee, EvaluationForm } from '@/types';
@@ -28,7 +38,7 @@ function formatDate(value: string) {
 
 export default function DanhGiaPage() {
   usePageTitle('Phiếu đánh giá nhân viên');
-  const { items: forms, loading, refresh } = useCrud<EvaluationForm>('/evaluations');
+  const { items: forms, loading, refresh, remove } = useCrud<EvaluationForm>('/evaluations');
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -38,6 +48,8 @@ export default function DanhGiaPage() {
   const [departmentId, setDepartmentId] = useState('all');
   const [createOpen, setCreateOpen] = useState(false);
   const [viewFormId, setViewFormId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<EvaluationForm | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     api.get<Employee[]>('/employees').then(setEmployees).catch(() => {});
@@ -110,7 +122,7 @@ export default function DanhGiaPage() {
               <TableHead>Bộ phận</TableHead>
               <TableHead>Ngày tạo</TableHead>
               <TableHead>Nội dung</TableHead>
-              <TableHead className="w-20 text-right">Thao tác</TableHead>
+              <TableHead className="w-24 text-right">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -166,14 +178,24 @@ export default function DanhGiaPage() {
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <button
-                      type="button"
-                      className="flex size-8 items-center justify-center rounded-md hover:bg-muted"
-                      title="Xem chi tiết"
-                      onClick={() => setViewFormId(form.id)}
-                    >
-                      <Eye className="size-4" />
-                    </button>
+                    <div className="flex justify-end gap-1">
+                      <button
+                        type="button"
+                        className="flex size-8 items-center justify-center rounded-md hover:bg-muted"
+                        title="Xem chi tiết"
+                        onClick={() => setViewFormId(form.id)}
+                      >
+                        <Eye className="size-4" />
+                      </button>
+                      <button
+                        type="button"
+                        className="flex size-8 items-center justify-center rounded-md text-red-500 hover:bg-muted hover:text-red-600"
+                        title="Xóa phiếu"
+                        onClick={() => setPendingDelete(form)}
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
@@ -198,6 +220,37 @@ export default function DanhGiaPage() {
         onOpenChange={(open) => !open && setViewFormId(null)}
         formId={viewFormId}
       />
+
+      <AlertDialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xoá phiếu đánh giá</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn xoá phiếu đánh giá của "{pendingDelete?.employee.name}" ngày{' '}
+              {pendingDelete && formatDate(pendingDelete.createdAt)}? Ảnh/video đính kèm cũng sẽ bị
+              xoá vĩnh viễn. Hành động này không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Huỷ</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={async () => {
+                if (!pendingDelete) return;
+                setDeleting(true);
+                try {
+                  await remove(pendingDelete.id);
+                  setPendingDelete(null);
+                } finally {
+                  setDeleting(false);
+                }
+              }}
+            >
+              Xoá
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

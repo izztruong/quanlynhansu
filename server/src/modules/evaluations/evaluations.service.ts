@@ -68,4 +68,17 @@ export const evaluationsService = {
     if (!form) throw new NotFoundError('Không tìm thấy phiếu đánh giá');
     return withAttachmentUrls(form);
   },
+
+  async remove(id: string) {
+    const form = await prisma.evaluationForm.findUnique({
+      where: { id },
+      select: { attachments: { select: { key: true } } },
+    });
+    if (!form) throw new NotFoundError('Không tìm thấy phiếu đánh giá');
+
+    // Cascade deletes the DB rows (answers + attachments); the R2 objects
+    // themselves aren't covered by that, so clean them up best-effort here.
+    await prisma.evaluationForm.delete({ where: { id } });
+    await Promise.all(form.attachments.map((a) => uploadsService.deleteFile(a.key).catch(() => {})));
+  },
 };

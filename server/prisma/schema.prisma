@@ -276,7 +276,7 @@ model EvaluationAnswer {
   criteriaId String
   criteria   EvaluationCriteria @relation(fields: [criteriaId], references: [id])
 
-  numberValue Int?
+  numberValue Float?
   textValue   String?
 
   @@index([formId])
