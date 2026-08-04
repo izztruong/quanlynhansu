@@ -68,11 +68,16 @@ function parseStatus(value: string): 'WORKING' | 'TERMINATED' {
   throw new Error(`Trạng thái không hợp lệ: "${value}" (chỉ nhận Đang làm việc / Đã nghỉ việc)`);
 }
 
-function parseSalaryRate(value: string): number | undefined {
+function parseNumber(value: string, label: string): number | undefined {
   if (!value.trim()) return undefined;
   const n = Number(value);
-  if (Number.isNaN(n)) throw new Error(`Mức lương không hợp lệ: "${value}"`);
-  return Math.round(n);
+  if (Number.isNaN(n)) throw new Error(`${label} không hợp lệ: "${value}"`);
+  return n;
+}
+
+function parseInteger(value: string, label: string): number | undefined {
+  const n = parseNumber(value, label);
+  return n === undefined ? undefined : Math.round(n);
 }
 
 interface ImportRowResult {
@@ -128,7 +133,9 @@ export const employeesService = {
           positionId: position.id,
           levelId: level?.id,
           employeeType: parseEmployeeType(row.employeeType),
-          salaryRate: parseSalaryRate(row.salaryRate),
+          salaryRate: parseInteger(row.salaryRate, 'Mức lương'),
+          capabilitySalary: parseInteger(row.capabilitySalary, 'Lương năng lực (NL)'),
+          workedHours: parseNumber(row.workedHours, 'Số giờ đã làm'),
           dateOfBirth: row.dateOfBirth ? new Date(row.dateOfBirth) : undefined,
           gender: parseGender(row.gender),
           permanentAddress: row.permanentAddress || undefined,

@@ -72,6 +72,8 @@ export interface Employee {
   avatarUrl: string | null;
   employeeType: EmployeeType;
   salaryRate: number | null;
+  capabilitySalary: number | null;
+  workedHours: number | null;
   status: EmployeeStatus;
   branch: Branch;
   department: Department;

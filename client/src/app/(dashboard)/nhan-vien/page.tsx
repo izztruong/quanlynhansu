@@ -128,34 +128,38 @@ export default function NhanVienPage() {
             { value: 'PART_TIME', label: 'Part-time' },
           ]}
         />
-        <DropdownMenu>
-          <DropdownMenuTrigger className={cn(buttonVariants({ variant: 'outline' }), 'ml-auto')}>
-            Nhập & xuất excel
-            <ChevronDown className="size-4" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setImportOpen(true)}>
-              <Upload className="size-4" />
-              Nhập dữ liệu
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleExport} disabled={exporting}>
-              <Download className="size-4" />
-              {exporting ? 'Đang xuất...' : 'Xuất dữ liệu'}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Button onClick={() => setAddOpen(true)}>
-          <Plus className="size-4" />
-          Thêm mới
-        </Button>
       </div>
 
       <div className="rounded-lg border bg-card">
-      <div className="flex items-center justify-between border-b p-4">
-        <span className="text-sm text-muted-foreground">
-          Tổng số {totalCount} nhân viên
-        </span>
-      </div>
+        <div className="flex items-center justify-between border-b p-4">
+          <span className="text-sm text-muted-foreground">
+            Tổng số {totalCount} nhân viên
+          </span>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
+              >
+                Nhập & xuất excel
+                <ChevronDown className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setImportOpen(true)}>
+                  <Upload className="size-4" />
+                  Nhập dữ liệu
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExport} disabled={exporting}>
+                  <Download className="size-4" />
+                  {exporting ? 'Đang xuất...' : 'Xuất dữ liệu'}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button size="sm" onClick={() => setAddOpen(true)}>
+              <Plus className="size-4" />
+              Thêm mới
+            </Button>
+          </div>
+        </div>
 
       <div className="overflow-x-auto">
         <table className="w-full table-fixed border-collapse caption-bottom text-sm">

@@ -21,6 +21,8 @@ interface FormState {
   levelId: string;
   employeeType: 'FULL_TIME' | 'PART_TIME';
   salaryRate: string;
+  capabilitySalary: string;
+  workedHours: string;
 }
 
 const emptyForm: FormState = {
@@ -34,6 +36,8 @@ const emptyForm: FormState = {
   levelId: 'none',
   employeeType: 'FULL_TIME',
   salaryRate: '',
+  capabilitySalary: '',
+  workedHours: '',
 };
 
 interface Props {
@@ -80,6 +84,8 @@ export function EmployeeFormDialog({
       levelId: form.levelId === 'none' ? undefined : form.levelId,
       employeeType: form.employeeType,
       salaryRate: form.salaryRate === '' ? undefined : Number(form.salaryRate),
+      capabilitySalary: form.capabilitySalary === '' ? undefined : Number(form.capabilitySalary),
+      workedHours: form.workedHours === '' ? undefined : Number(form.workedHours),
     });
     if (form.email) {
       toast.info('Đã cấp tài khoản đăng nhập — mật khẩu mặc định: 123456');
@@ -203,6 +209,28 @@ export function EmployeeFormDialog({
             type="number"
             value={form.salaryRate}
             onChange={(e) => setForm((f) => ({ ...f, salaryRate: e.target.value }))}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor="capabilitySalary">Lương năng lực (VNĐ)</Label>
+          <Input
+            id="capabilitySalary"
+            type="number"
+            value={form.capabilitySalary}
+            onChange={(e) => setForm((f) => ({ ...f, capabilitySalary: e.target.value }))}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="workedHours">Số giờ đã làm</Label>
+          <Input
+            id="workedHours"
+            type="number"
+            step="any"
+            value={form.workedHours}
+            onChange={(e) => setForm((f) => ({ ...f, workedHours: e.target.value }))}
           />
         </div>
       </div>

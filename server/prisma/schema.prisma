@@ -158,6 +158,11 @@ model Employee {
   // theo tháng — cùng 1 trường số, UI tự đổi nhãn theo employeeType.
   salaryRate Int?
 
+  // Lương năng lực (NL) — khoản cộng thêm theo năng lực, tính bằng VNĐ.
+  capabilitySalary Int?
+  // Số giờ đã làm tích luỹ; cho phép số lẻ (vd 160.5 giờ).
+  workedHours      Float?
+
   dateOfBirth       DateTime? @db.Date
   gender            Gender?
   permanentAddress  String?

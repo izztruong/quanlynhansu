@@ -12,6 +12,7 @@ import { Tabs, TabsList, TabsTab, TabsPanel } from '@/components/ui/tabs';
 import { EmployeeSidebarActions } from '@/components/features/nhan-vien/employee-sidebar-actions';
 import { PersonalInfoFormDialog } from '@/components/features/nhan-vien/personal-info-form-dialog';
 import { IdCardFormDialog } from '@/components/features/nhan-vien/id-card-form-dialog';
+import { WorkInfoFormDialog } from '@/components/features/nhan-vien/work-info-form-dialog';
 import { EvaluationSummaryCard } from '@/components/features/nhan-vien/evaluation-summary-card';
 import type { Branch, Employee, Position } from '@/types';
 
@@ -73,6 +74,7 @@ export default function NhanVienDetailPage() {
   const [positions, setPositions] = useState<Position[]>([]);
   const [personalInfoOpen, setPersonalInfoOpen] = useState(false);
   const [idCardOpen, setIdCardOpen] = useState(false);
+  const [workInfoOpen, setWorkInfoOpen] = useState(false);
 
   const loadEmployee = useCallback(() => {
     return api
@@ -213,23 +215,35 @@ export default function NhanVienDetailPage() {
             </TabsPanel>
 
             <TabsPanel value="work" className="flex flex-col gap-4">
-              <div className="rounded-lg border bg-card p-5">
-                <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3">
-                  <Field label="Chi nhánh" value={employee.branch.name} />
-                  <Field label="Bộ phận" value={employee.department.name} />
-                  <Field label="Chức vụ" value={employee.position.name} />
-                  <Field label="Level" value={employee.level?.name ?? '-'} />
-                  <Field
-                    label="Loại nhân viên"
-                    value={employee.employeeType === 'FULL_TIME' ? 'Full-time' : 'Part-time'}
-                  />
-                  <Field
-                    label={employee.employeeType === 'PART_TIME' ? 'Mức lương (VNĐ/giờ)' : 'Mức lương (VNĐ/tháng)'}
-                    value={employee.salaryRate !== null ? employee.salaryRate.toLocaleString('vi-VN') : '-'}
-                  />
-                  <Field label="Ngày vào làm" value={formatDate(employee.hireDate ?? employee.createdAt)} />
-                </div>
-              </div>
+              <SectionCard title="Thông tin công việc" onEdit={() => setWorkInfoOpen(true)}>
+                <Field label="Chi nhánh" value={employee.branch.name} />
+                <Field label="Bộ phận" value={employee.department.name} />
+                <Field label="Chức vụ" value={employee.position.name} />
+                <Field label="Level" value={employee.level?.name ?? '-'} />
+                <Field
+                  label="Loại nhân viên"
+                  value={employee.employeeType === 'FULL_TIME' ? 'Full-time' : 'Part-time'}
+                />
+                <Field
+                  label={employee.employeeType === 'PART_TIME' ? 'Mức lương (VNĐ/giờ)' : 'Mức lương (VNĐ/tháng)'}
+                  value={employee.salaryRate !== null ? employee.salaryRate.toLocaleString('vi-VN') : '-'}
+                />
+                <Field
+                  label="Lương năng lực (VNĐ)"
+                  value={
+                    employee.capabilitySalary !== null
+                      ? employee.capabilitySalary.toLocaleString('vi-VN')
+                      : '-'
+                  }
+                />
+                <Field
+                  label="Số giờ đã làm"
+                  value={
+                    employee.workedHours !== null ? employee.workedHours.toLocaleString('vi-VN') : '-'
+                  }
+                />
+                <Field label="Ngày vào làm" value={formatDate(employee.hireDate ?? employee.createdAt)} />
+              </SectionCard>
 
               <EvaluationSummaryCard employeeId={employee.id} />
             </TabsPanel>
@@ -244,6 +258,12 @@ export default function NhanVienDetailPage() {
           <PersonalInfoFormDialog
             open={personalInfoOpen}
             onOpenChange={setPersonalInfoOpen}
+            employee={employee}
+            onChanged={loadEmployee}
+          />
+          <WorkInfoFormDialog
+            open={workInfoOpen}
+            onOpenChange={setWorkInfoOpen}
             employee={employee}
             onChanged={loadEmployee}
           />

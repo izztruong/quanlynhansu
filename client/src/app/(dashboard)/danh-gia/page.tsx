@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Eye, Search, Plus, ImageIcon, Video, Trash2 } from 'lucide-react';
+import { Eye, Search, Plus, ImageIcon, Video, Trash2, X } from 'lucide-react';
 import { usePageTitle } from '@/components/layout/page-title-context';
 import { useCrud } from '@/hooks/use-crud';
 import { usePagination } from '@/hooks/use-pagination';
@@ -36,6 +36,13 @@ function formatDate(value: string) {
   return new Date(value).toLocaleDateString('vi-VN');
 }
 
+// Ngày theo múi giờ máy người dùng, khớp với ngày đang hiển thị ở cột "Ngày
+// tạo" — cắt thẳng chuỗi UTC sẽ lệch một ngày với phiếu tạo vào buổi tối.
+function toLocalISODate(value: string) {
+  const d = new Date(value);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
 export default function DanhGiaPage() {
   usePageTitle('Phiếu đánh giá nhân viên');
   const { items: forms, loading, refresh, remove } = useCrud<EvaluationForm>('/evaluations');
@@ -46,6 +53,8 @@ export default function DanhGiaPage() {
   const [search, setSearch] = useState('');
   const [branchId, setBranchId] = useState('all');
   const [departmentId, setDepartmentId] = useState('all');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [viewFormId, setViewFormId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<EvaluationForm | null>(null);
@@ -63,9 +72,12 @@ export default function DanhGiaPage() {
       const matchesSearch = !keyword || f.employee.name.toLowerCase().includes(keyword);
       const matchesBranch = branchId === 'all' || f.employee.branch.id === branchId;
       const matchesDepartment = departmentId === 'all' || f.employee.department.id === departmentId;
-      return matchesSearch && matchesBranch && matchesDepartment;
+      const createdOn = toLocalISODate(f.createdAt);
+      const matchesFrom = !fromDate || createdOn >= fromDate;
+      const matchesTo = !toDate || createdOn <= toDate;
+      return matchesSearch && matchesBranch && matchesDepartment && matchesFrom && matchesTo;
     });
-  }, [forms, search, branchId, departmentId]);
+  }, [forms, search, branchId, departmentId, fromDate, toDate]);
 
   const { page, setPage, pageCount, pageItems: pageForms, totalCount, startIndex } =
     usePagination(filteredForms);
@@ -100,10 +112,38 @@ export default function DanhGiaPage() {
             ...departments.map((d) => ({ value: d.id, label: d.name })),
           ]}
         />
-        <Button className="ml-auto" onClick={() => setCreateOpen(true)}>
-          <Plus className="size-4" />
-          Tạo phiếu mới
-        </Button>
+        <div className="flex items-center gap-2">
+          <Input
+            type="date"
+            value={fromDate}
+            max={toDate || undefined}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="w-40"
+            title="Từ ngày"
+          />
+          <span className="text-sm text-muted-foreground">đến</span>
+          <Input
+            type="date"
+            value={toDate}
+            min={fromDate || undefined}
+            onChange={(e) => setToDate(e.target.value)}
+            className="w-40"
+            title="Đến ngày"
+          />
+          {(fromDate || toDate) && (
+            <Button
+              variant="outline"
+              size="icon"
+              title="Xoá lọc thời gian"
+              onClick={() => {
+                setFromDate('');
+                setToDate('');
+              }}
+            >
+              <X className="size-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="rounded-lg border bg-card">
@@ -111,6 +151,10 @@ export default function DanhGiaPage() {
           <span className="text-sm text-muted-foreground">
             Tổng số {totalCount} phiếu đánh giá
           </span>
+          <Button size="sm" onClick={() => setCreateOpen(true)}>
+            <Plus className="size-4" />
+            Tạo phiếu mới
+          </Button>
         </div>
 
         <Table>

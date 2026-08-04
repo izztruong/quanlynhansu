@@ -11,6 +11,8 @@ interface EmployeeWithRelations {
   phone: string | null;
   employeeType: 'FULL_TIME' | 'PART_TIME';
   salaryRate: number | null;
+  capabilitySalary: number | null;
+  workedHours: number | null;
   dateOfBirth: Date | null;
   gender: 'MALE' | 'FEMALE' | 'OTHER' | null;
   permanentAddress: string | null;
@@ -40,6 +42,8 @@ export const COLUMNS = [
   { header: 'Level', key: 'level', width: 12, required: false },
   { header: 'Loại nhân viên', key: 'employeeType', width: 14, required: false },
   { header: 'Mức lương', key: 'salaryRate', width: 12, required: false },
+  { header: 'Lương năng lực (NL)', key: 'capabilitySalary', width: 18, required: false },
+  { header: 'Số giờ đã làm', key: 'workedHours', width: 14, required: false },
   { header: 'Ngày sinh', key: 'dateOfBirth', width: 12, required: false },
   { header: 'Giới tính', key: 'gender', width: 10, required: false },
   { header: 'Nơi thường trú', key: 'permanentAddress', width: 24, required: false },
@@ -68,6 +72,8 @@ function employeeToRow(e: EmployeeWithRelations) {
     level: e.level?.name ?? '',
     employeeType: e.employeeType === 'FULL_TIME' ? 'Full-time' : 'Part-time',
     salaryRate: e.salaryRate ?? '',
+    capabilitySalary: e.capabilitySalary ?? '',
+    workedHours: e.workedHours ?? '',
     dateOfBirth: formatDate(e.dateOfBirth),
     gender: e.gender ? GENDER_LABEL[e.gender] : '',
     permanentAddress: e.permanentAddress ?? '',
@@ -103,6 +109,8 @@ function addGuideSheet(workbook: ExcelJS.Workbook) {
     '- Trạng thái: chỉ nhận "Đang làm việc" hoặc "Đã nghỉ việc" (để trống mặc định là Đang làm việc).',
     '- Các ngày (Ngày sinh, Ngày cấp CCCD, Ngày vào làm) nhập theo định dạng YYYY-MM-DD, ví dụ 2024-01-15.',
     '- Mức lương nhập số nguyên (VNĐ/giờ nếu Part-time, VNĐ/tháng nếu Full-time).',
+    '- Lương năng lực (NL) nhập số nguyên (VNĐ).',
+    '- Số giờ đã làm cho phép số lẻ, dùng dấu chấm thập phân, ví dụ 160.5.',
   ];
   lines.forEach((line, i) => {
     const row = sheet.addRow([line]);
@@ -130,6 +138,8 @@ export function buildTemplateWorkbook() {
     level: '',
     employeeType: 'Full-time',
     salaryRate: 8000000,
+    capabilitySalary: 1000000,
+    workedHours: 160.5,
     dateOfBirth: '2000-01-01',
     gender: 'Nam',
     status: 'Đang làm việc',

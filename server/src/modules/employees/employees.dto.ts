@@ -12,6 +12,8 @@ export const createEmployeeSchema = z.object({
   levelId: z.string().optional(),
   employeeType: z.enum(['FULL_TIME', 'PART_TIME']).optional(),
   salaryRate: z.number().int().optional(),
+  capabilitySalary: z.number().int().optional(),
+  workedHours: z.number().optional(),
   dateOfBirth: z.string().optional(),
   gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
   permanentAddress: z.string().optional(),
