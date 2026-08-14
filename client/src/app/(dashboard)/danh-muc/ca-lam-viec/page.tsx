@@ -83,6 +83,7 @@ export default function CaLamViecPage() {
   return (
     <div className="space-y-4">
       <CrudTable
+        resource="SHIFTS"
         items={items}
         loading={loading}
         onAdd={openAdd}

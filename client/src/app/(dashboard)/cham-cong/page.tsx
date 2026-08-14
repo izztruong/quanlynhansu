@@ -1,5 +1,6 @@
 'use client';
 
+import { toast } from 'sonner';
 import { useCallback, useEffect, useState } from 'react';
 import { usePageTitle } from '@/components/layout/page-title-context';
 import { api } from '@/lib/api-client';
@@ -56,7 +57,10 @@ export default function ChamCongPage() {
   useEffect(() => {
     api.get<Branch[]>('/branches').then(setBranches).catch(() => {});
     api.get<Department[]>('/departments').then(setDepartments).catch(() => {});
-    api.get<Employee[]>('/employees').then(setEmployees).catch(() => {});
+    api
+      .get<Employee[]>('/employees')
+      .then(setEmployees)
+      .catch(() => toast.error('Không tải được danh sách nhân viên — chức vụ của bạn cần quyền Xem ở mục Nhân viên'));
   }, []);
 
   useEffect(() => {

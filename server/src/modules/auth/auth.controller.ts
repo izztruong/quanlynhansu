@@ -3,6 +3,7 @@ import { authService } from './auth.service';
 import { changePasswordSchema, loginSchema } from './auth.dto';
 import { AUTH_COOKIE_NAME } from '@/config/auth';
 import { NotFoundError } from '@/common/errors';
+import { resolvePermissions } from '@/common/permissions';
 
 const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const isProduction = process.env.NODE_ENV === 'production';
@@ -43,7 +44,9 @@ export const authController = {
   async me(req: Request, res: Response) {
     const employee = await authService.getById(req.user!.employeeId);
     if (!employee) throw new NotFoundError('Không tìm thấy tài khoản');
-    res.json({ data: employee });
+    // Kèm quyền để web ẩn bớt menu/nút; việc chặn thật vẫn ở requirePermission.
+    const { isSystem, permissions } = await resolvePermissions(req.user!.employeeId);
+    res.json({ data: { ...employee, isSystem, permissions } });
   },
 
   async changePassword(req: Request, res: Response) {

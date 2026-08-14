@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Pagination } from '@/components/ui/pagination';
 import { usePagination } from '@/hooks/use-pagination';
+import { useAuth } from '@/lib/auth-context';
 
 export interface CrudColumn<T> {
   header: string;
@@ -39,6 +40,8 @@ interface CrudTableProps<T extends { id: string }> {
   onDelete: (item: T) => Promise<void>;
   addLabel?: string;
   getRowLabel?: (item: T) => string;
+  /** Chức năng trong bảng phân quyền — dùng để ẩn nút không có quyền. */
+  resource?: string;
 }
 
 export function CrudTable<T extends { id: string }>({
@@ -50,10 +53,18 @@ export function CrudTable<T extends { id: string }>({
   onDelete,
   addLabel = 'Thêm mới',
   getRowLabel,
+  resource,
 }: CrudTableProps<T>) {
   const [pendingDelete, setPendingDelete] = useState<T | null>(null);
   const [deleting, setDeleting] = useState(false);
   const { page, setPage, pageCount, pageItems, totalCount, startIndex } = usePagination(items);
+  const { can } = useAuth();
+
+  // Không khai resource thì giữ nguyên hành vi cũ (hiện đủ nút).
+  const canCreate = !resource || can(resource, 'create');
+  const canUpdate = !resource || can(resource, 'update');
+  const canDelete = !resource || can(resource, 'delete');
+  const showActions = canUpdate || canDelete;
 
   return (
     <div className="rounded-lg border bg-card">
@@ -61,10 +72,12 @@ export function CrudTable<T extends { id: string }>({
         <span className="text-sm text-muted-foreground">
           Tổng số {totalCount} mục
         </span>
-        <Button onClick={onAdd} size="sm">
-          <Plus className="size-4" />
-          {addLabel}
-        </Button>
+        {canCreate && (
+          <Button onClick={onAdd} size="sm">
+            <Plus className="size-4" />
+            {addLabel}
+          </Button>
+        )}
       </div>
 
       <div className="overflow-x-auto">
@@ -77,20 +90,20 @@ export function CrudTable<T extends { id: string }>({
                   {col.header}
                 </TableHead>
               ))}
-              <TableHead className="w-24 text-right">Thao tác</TableHead>
+              {showActions && <TableHead className="w-24 text-right">Thao tác</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading && (
               <TableRow>
-                <TableCell colSpan={columns.length + 2} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={columns.length + (showActions ? 2 : 1)} className="h-24 text-center text-muted-foreground">
                   Đang tải dữ liệu...
                 </TableCell>
               </TableRow>
             )}
             {!loading && totalCount === 0 && (
               <TableRow>
-                <TableCell colSpan={columns.length + 2} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={columns.length + (showActions ? 2 : 1)} className="h-24 text-center text-muted-foreground">
                   Chưa có dữ liệu
                 </TableCell>
               </TableRow>
@@ -103,21 +116,32 @@ export function CrudTable<T extends { id: string }>({
                     {col.cell(item)}
                   </TableCell>
                 ))}
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
-                    <Button variant="ghost" size="icon" className="size-8" onClick={() => onEdit(item)}>
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 text-red-500 hover:text-red-600"
-                      onClick={() => setPendingDelete(item)}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-                </TableCell>
+                {showActions && (
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      {canUpdate && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8"
+                          onClick={() => onEdit(item)}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 text-red-500 hover:text-red-600"
+                          onClick={() => setPendingDelete(item)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>

@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { asyncHandler } from '@/common/async-handler';
-import { requireAdmin } from '@/common/auth-middleware';
+import { requirePermission } from '@/common/permissions';
 import { newsController } from './news.controller';
 
 export const newsRouter = Router();
 
-newsRouter.get('/', asyncHandler(newsController.list));
-newsRouter.get('/:id', asyncHandler(newsController.getById));
-newsRouter.post('/', requireAdmin, asyncHandler(newsController.create));
-newsRouter.put('/:id', requireAdmin, asyncHandler(newsController.update));
-newsRouter.delete('/:id', requireAdmin, asyncHandler(newsController.remove));
+newsRouter.get('/', requirePermission('NEWS'), asyncHandler(newsController.list));
+newsRouter.get('/:id', requirePermission('NEWS'), asyncHandler(newsController.getById));
+newsRouter.post('/', requirePermission('NEWS'), asyncHandler(newsController.create));
+newsRouter.put('/:id', requirePermission('NEWS'), asyncHandler(newsController.update));
+newsRouter.delete('/:id', requirePermission('NEWS'), asyncHandler(newsController.remove));

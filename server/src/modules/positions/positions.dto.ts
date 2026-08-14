@@ -5,6 +5,7 @@ export const createPositionSchema = z.object({
   description: z.string().optional(),
   accessScopes: z.array(z.string()).optional(),
   status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
+  permissions: z.array(z.string()).optional(),
 });
 
 export const updatePositionSchema = createPositionSchema.partial();

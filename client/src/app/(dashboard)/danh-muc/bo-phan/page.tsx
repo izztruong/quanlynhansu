@@ -60,6 +60,7 @@ export default function BoPhanPage() {
   return (
     <div className="space-y-4">
       <CrudTable
+        resource="DEPARTMENTS"
         items={items}
         loading={loading}
         onAdd={openAdd}

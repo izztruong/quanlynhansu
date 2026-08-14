@@ -31,6 +31,13 @@ export function errorHandler(
     return;
   }
 
+  // body-parser ném SyntaxError kèm statusCode 400 khi JSON gửi lên sai
+  // định dạng — không bắt thì rơi xuống 500 và rất khó lần ra nguyên nhân.
+  if (err instanceof SyntaxError && 'statusCode' in err && err.statusCode === 400) {
+    res.status(400).json({ message: 'Dữ liệu gửi lên không phải JSON hợp lệ' });
+    return;
+  }
+
   if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
     const target = err.meta?.target;
     const field = Array.isArray(target) ? target[0] : undefined;

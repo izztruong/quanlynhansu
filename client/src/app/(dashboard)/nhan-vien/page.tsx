@@ -7,6 +7,7 @@ import { Eye, Clock, Search, Plus, Download, Upload, ChevronDown } from 'lucide-
 import { usePageTitle } from '@/components/layout/page-title-context';
 import { useCrud } from '@/hooks/use-crud';
 import { usePagination } from '@/hooks/use-pagination';
+import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api-client';
 import { EmployeeStatusBadge } from '@/components/ui/status-badge';
 import { EmployeeActionsMenu } from '@/components/features/nhan-vien/employee-actions-menu';
@@ -54,6 +55,7 @@ export default function NhanVienPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const { can } = useAuth();
 
   const handleExport = async () => {
     setExporting(true);
@@ -144,20 +146,24 @@ export default function NhanVienPage() {
                 <ChevronDown className="size-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setImportOpen(true)}>
-                  <Upload className="size-4" />
-                  Nhập dữ liệu
-                </DropdownMenuItem>
+                {can('EMPLOYEES', 'create') && (
+                  <DropdownMenuItem onClick={() => setImportOpen(true)}>
+                    <Upload className="size-4" />
+                    Nhập dữ liệu
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={handleExport} disabled={exporting}>
                   <Download className="size-4" />
                   {exporting ? 'Đang xuất...' : 'Xuất dữ liệu'}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button size="sm" onClick={() => setAddOpen(true)}>
-              <Plus className="size-4" />
-              Thêm mới
-            </Button>
+            {can('EMPLOYEES', 'create') && (
+              <Button size="sm" onClick={() => setAddOpen(true)}>
+                <Plus className="size-4" />
+                Thêm mới
+              </Button>
+            )}
           </div>
         </div>
 
@@ -269,12 +275,14 @@ export default function NhanVienPage() {
                     >
                       <Clock className="size-4" />
                     </button>
-                    <EmployeeActionsMenu
-                      employee={employee}
-                      branches={branches}
-                      positions={positions}
-                      onChanged={refresh}
-                    />
+                    {can('EMPLOYEES', 'update') && (
+                      <EmployeeActionsMenu
+                        employee={employee}
+                        branches={branches}
+                        positions={positions}
+                        onChanged={refresh}
+                      />
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

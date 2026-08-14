@@ -67,6 +67,7 @@ model Branch {
   employees     Employee[]
   news          News[]
   notifications NotificationBranch[]
+  trainingLogs  TrainingLog[]
 
   @@map("branches")
 }
@@ -84,6 +85,9 @@ model Department {
   news             News[]
   notifications    NotificationDepartment[]
 
+  trainingCriteriaGroups TrainingCriteriaGroup[]
+  trainingLogs           TrainingLog[]
+
   @@map("departments")
 }
 
@@ -93,13 +97,23 @@ model Position {
   description   String?
   accessScopes  String[]     @default([])
   status        RecordStatus @default(ACTIVE)
+  // Chức vụ hệ thống (Chủ thương hiệu): luôn toàn quyền, không cho sửa
+  // hoặc xoá. Đây là chốt chặn để cấu hình phân quyền sai không thể khoá
+  // hết mọi người ra ngoài.
+  isSystem      Boolean      @default(false)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
   employees Employee[]
 
+  // Mã quyền dạng RESOURCE.ACTION (vd "EMPLOYEES.ADD"). Dùng mảng chuỗi
+  // thay bảng riêng để thêm hành động ngoài CRUD (xuất file, duyệt đơn...)
+  // không phải đổi schema.
+  permissions String[] @default([])
+
   @@map("positions")
 }
+
 
 model Level {
   id          String       @id @default(cuid())
@@ -196,6 +210,14 @@ model Employee {
   notifications   NotificationEmployee[]
   evaluationForms EvaluationForm[]
   sessions        Session[]
+
+  trainingLogs         TrainingLog[] @relation("TrainingLogTrainee")
+  mentoredTrainingLogs TrainingLog[] @relation("TrainingLogMentor")
+  createdTrainingLogs  TrainingLog[] @relation("TrainingLogAuthor")
+
+  workReviews         WorkReview[] @relation("WorkReviewSubject")
+  reviewedWorkReviews WorkReview[] @relation("WorkReviewReviewer")
+  createdWorkReviews  WorkReview[] @relation("WorkReviewAuthor")
 
   @@map("employees")
 }
@@ -409,4 +431,170 @@ model NotificationEmployee {
 
   @@id([notificationId, employeeId])
   @@map("notification_employees")
+}
+
+enum TrainingLogStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+// Bộ tiêu chí chấm điểm học việc, khai báo riêng cho từng bộ phận —
+// phục vụ và pha chế chấm những thứ khác nhau. Admin dựng ở
+// Danh mục > Cấu hình học việc trước khi tạo phiếu.
+model TrainingCriteriaGroup {
+  id           String       @id @default(cuid())
+  departmentId String
+  department   Department   @relation(fields: [departmentId], references: [id])
+  name         String
+  order        Int          @default(0)
+  status       RecordStatus @default(ACTIVE)
+  createdAt    DateTime     @default(now())
+
+  criteria TrainingCriteria[]
+
+  @@index([departmentId, order])
+  @@map("training_criteria_groups")
+}
+
+model TrainingCriteria {
+  id       String                @id @default(cuid())
+  groupId  String
+  group    TrainingCriteriaGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name     String
+  maxScore Int
+  order    Int                   @default(0)
+  status   RecordStatus          @default(ACTIVE)
+
+  scores TrainingScore[]
+
+  @@index([groupId, order])
+  @@map("training_criteria")
+}
+
+// Một phiếu = một đợt học việc của một nhân viên. Tên/ngày sinh/SĐT/email
+// đọc từ Employee qua quan hệ, không lưu lặp; riêng branch/department giữ
+// trên phiếu như ảnh chụp tại thời điểm học việc.
+model TrainingLog {
+  id           String     @id @default(cuid())
+  employeeId   String
+  employee     Employee   @relation("TrainingLogTrainee", fields: [employeeId], references: [id], onDelete: Cascade)
+  branchId     String
+  branch       Branch     @relation(fields: [branchId], references: [id])
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  mentorId     String?
+  mentor       Employee?  @relation("TrainingLogMentor", fields: [mentorId], references: [id])
+
+  startDate DateTime? @db.Date
+  endDate   DateTime? @db.Date
+
+  status         TrainingLogStatus @default(IN_PROGRESS)
+  overallOpinion String?
+
+  createdById String?
+  createdBy   Employee? @relation("TrainingLogAuthor", fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  sessions TrainingSession[]
+  scores   TrainingScore[]
+
+  @@index([employeeId, createdAt])
+  @@map("training_logs")
+}
+
+model TrainingSession {
+  id            String      @id @default(cuid())
+  trainingLogId String
+  trainingLog   TrainingLog @relation(fields: [trainingLogId], references: [id], onDelete: Cascade)
+
+  sessionNumber Int
+  sessionDate   DateTime? @db.Date
+
+  learnedContent    String?
+  assignedTasks     String?
+  evalAppearance    String?
+  evalCommunication String?
+  evalPractice      String?
+
+  @@index([trainingLogId, sessionNumber])
+  @@map("training_sessions")
+}
+
+// groupName/criteriaName/maxScore là ảnh chụp tại thời điểm chấm — sửa
+// hoặc xoá tiêu chí về sau không được phép làm đổi tổng điểm và xếp loại
+// của phiếu đã chấm (giống dòng hàng trên hoá đơn giữ đơn giá lúc bán).
+model TrainingScore {
+  id            String      @id @default(cuid())
+  trainingLogId String
+  trainingLog   TrainingLog @relation(fields: [trainingLogId], references: [id], onDelete: Cascade)
+  criteriaId    String?
+  criteria      TrainingCriteria? @relation(fields: [criteriaId], references: [id])
+
+  groupName    String
+  criteriaName String
+  maxScore     Int
+  score        Int
+  note         String?
+
+  @@index([trainingLogId])
+  @@map("training_scores")
+}
+
+// Danh mục các mục trong "Nhận xét chung" của phiếu đánh giá công việc,
+// admin sửa ở Danh mục > Mục nhận xét công việc.
+model WorkReviewSection {
+  id        String       @id @default(cuid())
+  name      String
+  order     Int          @default(0)
+  status    RecordStatus @default(ACTIVE)
+  createdAt DateTime     @default(now())
+
+  notes WorkReviewNote[]
+
+  @@index([order])
+  @@map("work_review_sections")
+}
+
+// Phiếu đánh giá công việc theo tuần. Chi nhánh/bộ phận đọc qua quan hệ
+// employee (giống trang phiếu đánh giá chi tiết) thay vì lưu lặp.
+model WorkReview {
+  id            String   @id @default(cuid())
+  employeeId    String
+  employee      Employee @relation("WorkReviewSubject", fields: [employeeId], references: [id], onDelete: Cascade)
+  weekStartDate DateTime @db.Date
+
+  reviewerId String?
+  reviewer   Employee? @relation("WorkReviewReviewer", fields: [reviewerId], references: [id])
+
+  // Cho số lẻ vì chấm 8.5/10 là bình thường; maxScore vẫn nguyên.
+  score    Float
+  maxScore Int   @default(10)
+
+  createdById String?
+  createdBy   Employee? @relation("WorkReviewAuthor", fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  notes WorkReviewNote[]
+
+  @@index([employeeId, weekStartDate])
+  @@map("work_reviews")
+}
+
+// sectionName là ảnh chụp lúc viết — đổi tên hay xoá mục về sau không
+// làm hỏng phiếu đã lưu.
+model WorkReviewNote {
+  id        String  @id @default(cuid())
+  reviewId  String
+  review    WorkReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  sectionId String?
+  section   WorkReviewSection? @relation(fields: [sectionId], references: [id])
+
+  sectionName String
+  content     String
+  order       Int    @default(0)
+
+  @@index([reviewId])
+  @@map("work_review_notes")
 }

@@ -76,6 +76,7 @@ export default function ChiNhanhPage() {
   return (
     <div className="space-y-4">
       <CrudTable
+        resource="BRANCHES"
         items={items}
         loading={loading}
         onAdd={openAdd}

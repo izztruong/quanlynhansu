@@ -61,8 +61,20 @@ function NavGroup({ item, pathname }: { item: NavItem; pathname: string }) {
 
 export function Sidebar({ className }: { className?: string }) {
   const pathname = usePathname();
-  const { isAdmin } = useAuth();
-  const visibleItems = navItems.filter((item) => !item.adminOnly || isAdmin);
+  const { isAdmin, can } = useAuth();
+
+  // Ẩn mục không có quyền xem. Mục nhóm chỉ hiện khi còn ít nhất một mục con
+  // xem được, tránh để lại nhóm rỗng bấm vào không ra gì.
+  const visibleItems = navItems
+    .filter((item) => !item.adminOnly || isAdmin)
+    .map((item) => ({
+      ...item,
+      children: item.children?.filter((child) => !child.resource || can(child.resource)),
+    }))
+    .filter((item) => {
+      if (item.children) return item.children.length > 0;
+      return !item.resource || can(item.resource);
+    });
 
   return (
     <aside

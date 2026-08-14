@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { ArrowLeft, Heart, Tag, Mail, Pencil } from 'lucide-react';
 import { usePageTitle } from '@/components/layout/page-title-context';
 import { api } from '@/lib/api-client';
+import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { EmployeeStatusBadge } from '@/components/ui/status-badge';
 import { Tabs, TabsList, TabsTab, TabsPanel } from '@/components/ui/tabs';
@@ -13,8 +14,10 @@ import { EmployeeSidebarActions } from '@/components/features/nhan-vien/employee
 import { PersonalInfoFormDialog } from '@/components/features/nhan-vien/personal-info-form-dialog';
 import { IdCardFormDialog } from '@/components/features/nhan-vien/id-card-form-dialog';
 import { WorkInfoFormDialog } from '@/components/features/nhan-vien/work-info-form-dialog';
+import { TrainingLogCard } from '@/components/features/nhan-vien/training-log-card';
 import { EvaluationSummaryCard } from '@/components/features/nhan-vien/evaluation-summary-card';
-import type { Branch, Employee, Position } from '@/types';
+import { WorkReviewSummaryCard } from '@/components/features/nhan-vien/work-review-summary-card';
+import type { Branch, Department, Employee, Position } from '@/types';
 
 const genderLabel: Record<string, string> = {
   MALE: 'Nam',
@@ -45,20 +48,24 @@ function Field({ label, value }: { label: string; value: string }) {
 function SectionCard({
   title,
   onEdit,
+  canEdit = true,
   children,
 }: {
   title: string;
   onEdit: () => void;
+  canEdit?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div className="rounded-lg border bg-card p-5">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="font-semibold">{title}</h3>
-        <Button variant="outline" size="sm" onClick={onEdit}>
-          <Pencil className="size-3.5" />
-          Cập nhật
-        </Button>
+        {canEdit && (
+          <Button variant="outline" size="sm" onClick={onEdit}>
+            <Pencil className="size-3.5" />
+            Cập nhật
+          </Button>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3">{children}</div>
     </div>
@@ -72,9 +79,12 @@ export default function NhanVienDetailPage() {
   const [loading, setLoading] = useState(true);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [personalInfoOpen, setPersonalInfoOpen] = useState(false);
   const [idCardOpen, setIdCardOpen] = useState(false);
   const [workInfoOpen, setWorkInfoOpen] = useState(false);
+  const { can } = useAuth();
+  const canEditEmployee = can('EMPLOYEES', 'update');
 
   const loadEmployee = useCallback(() => {
     return api
@@ -90,6 +100,7 @@ export default function NhanVienDetailPage() {
   useEffect(() => {
     api.get<Branch[]>('/branches').then(setBranches).catch(() => {});
     api.get<Position[]>('/positions').then(setPositions).catch(() => {});
+    api.get<Department[]>('/departments').then(setDepartments).catch(() => {});
   }, []);
 
   return (
@@ -137,6 +148,7 @@ export default function NhanVienDetailPage() {
               </div>
             </div>
 
+            {canEditEmployee && (
             <div className="border-t pt-4">
               <EmployeeSidebarActions
                 employee={employee}
@@ -145,17 +157,23 @@ export default function NhanVienDetailPage() {
                 onChanged={loadEmployee}
               />
             </div>
+            )}
           </div>
 
           <Tabs defaultValue="personal" className="min-w-0">
             <TabsList className="mb-4">
               <TabsTab value="personal">Cá nhân</TabsTab>
               <TabsTab value="work">Công việc</TabsTab>
+              <TabsTab value="training">Nhật ký học việc</TabsTab>
               <TabsTab value="history">Lịch sử hoạt động</TabsTab>
             </TabsList>
 
             <TabsPanel value="personal" className="flex flex-col gap-4">
-              <SectionCard title="Thông tin cơ bản" onEdit={() => setPersonalInfoOpen(true)}>
+              <SectionCard
+                title="Thông tin cơ bản"
+                canEdit={canEditEmployee}
+                onEdit={() => setPersonalInfoOpen(true)}
+              >
                 <Field label="Họ tên" value={employee.name} />
                 <Field label="Email" value={employee.email ?? '-'} />
                 <Field label="Số điện thoại" value={employee.phone ?? '-'} />
@@ -175,7 +193,11 @@ export default function NhanVienDetailPage() {
                 />
               </SectionCard>
 
-              <SectionCard title="Thông tin căn cước" onEdit={() => setIdCardOpen(true)}>
+              <SectionCard
+                title="Thông tin căn cước"
+                canEdit={canEditEmployee}
+                onEdit={() => setIdCardOpen(true)}
+              >
                 <Field label="Số căn cước công dân" value={employee.idNumber ?? '-'} />
                 <Field label="Ngày cấp" value={formatDate(employee.idIssueDate)} />
                 <Field label="Nơi cấp" value={employee.idIssuePlace ?? '-'} />
@@ -215,7 +237,11 @@ export default function NhanVienDetailPage() {
             </TabsPanel>
 
             <TabsPanel value="work" className="flex flex-col gap-4">
-              <SectionCard title="Thông tin công việc" onEdit={() => setWorkInfoOpen(true)}>
+              <SectionCard
+                title="Thông tin công việc"
+                canEdit={canEditEmployee}
+                onEdit={() => setWorkInfoOpen(true)}
+              >
                 <Field label="Chi nhánh" value={employee.branch.name} />
                 <Field label="Bộ phận" value={employee.department.name} />
                 <Field label="Chức vụ" value={employee.position.name} />
@@ -246,6 +272,16 @@ export default function NhanVienDetailPage() {
               </SectionCard>
 
               <EvaluationSummaryCard employeeId={employee.id} />
+
+              <WorkReviewSummaryCard employeeId={employee.id} />
+            </TabsPanel>
+
+            <TabsPanel value="training">
+              <TrainingLogCard
+                employee={employee}
+                branches={branches}
+                departments={departments}
+              />
             </TabsPanel>
 
             <TabsPanel value="history">

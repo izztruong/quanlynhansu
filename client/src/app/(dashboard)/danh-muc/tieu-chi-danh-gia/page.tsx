@@ -87,6 +87,7 @@ export default function TieuChiDanhGiaPage() {
   return (
     <div className="space-y-4">
       <CrudTable
+        resource="EVALUATION_CRITERIA"
         items={sorted}
         loading={loading}
         onAdd={openAdd}

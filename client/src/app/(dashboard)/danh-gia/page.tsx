@@ -1,10 +1,12 @@
 'use client';
 
+import { toast } from 'sonner';
 import { useEffect, useMemo, useState } from 'react';
 import { Eye, Search, Plus, ImageIcon, Video, Trash2, X } from 'lucide-react';
 import { usePageTitle } from '@/components/layout/page-title-context';
 import { useCrud } from '@/hooks/use-crud';
 import { usePagination } from '@/hooks/use-pagination';
+import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api-client';
 import { Input } from '@/components/ui/input';
 import { SimpleSelect } from '@/components/ui/simple-select';
@@ -59,9 +61,13 @@ export default function DanhGiaPage() {
   const [viewFormId, setViewFormId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<EvaluationForm | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const { can } = useAuth();
 
   useEffect(() => {
-    api.get<Employee[]>('/employees').then(setEmployees).catch(() => {});
+    api
+      .get<Employee[]>('/employees')
+      .then(setEmployees)
+      .catch(() => toast.error('Không tải được danh sách nhân viên — chức vụ của bạn cần quyền Xem ở mục Nhân viên'));
     api.get<Branch[]>('/branches').then(setBranches).catch(() => {});
     api.get<Department[]>('/departments').then(setDepartments).catch(() => {});
   }, []);
@@ -151,10 +157,12 @@ export default function DanhGiaPage() {
           <span className="text-sm text-muted-foreground">
             Tổng số {totalCount} phiếu đánh giá
           </span>
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus className="size-4" />
-            Tạo phiếu mới
-          </Button>
+          {can('EVALUATIONS', 'create') && (
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="size-4" />
+              Tạo phiếu mới
+            </Button>
+          )}
         </div>
 
         <Table>
@@ -231,14 +239,16 @@ export default function DanhGiaPage() {
                       >
                         <Eye className="size-4" />
                       </button>
-                      <button
-                        type="button"
-                        className="flex size-8 items-center justify-center rounded-md text-red-500 hover:bg-muted hover:text-red-600"
-                        title="Xóa phiếu"
-                        onClick={() => setPendingDelete(form)}
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
+                      {can('EVALUATIONS', 'delete') && (
+                        <button
+                          type="button"
+                          className="flex size-8 items-center justify-center rounded-md text-red-500 hover:bg-muted hover:text-red-600"
+                          title="Xóa phiếu"
+                          onClick={() => setPendingDelete(form)}
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

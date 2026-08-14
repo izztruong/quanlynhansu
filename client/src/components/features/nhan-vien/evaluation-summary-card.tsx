@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { EvaluationFormDialog } from '@/components/features/nhan-vien/evaluation-form-dialog';
 import { EvaluationFormView } from '@/components/features/nhan-vien/evaluation-form-view';
 import { api } from '@/lib/api-client';
+import { useAuth } from '@/lib/auth-context';
 import type { EvaluationForm } from '@/types';
 
 function formatDate(value: string) {
@@ -20,6 +21,7 @@ export function EvaluationSummaryCard({ employeeId }: Props) {
   const [form, setForm] = useState<EvaluationForm | null>(null);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
+  const { can } = useAuth();
 
   const load = useCallback(() => {
     setLoading(true);
@@ -42,10 +44,12 @@ export function EvaluationSummaryCard({ employeeId }: Props) {
             <p className="text-xs text-muted-foreground">Tạo ngày {formatDate(form.createdAt)}</p>
           )}
         </div>
-        <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
-          <Plus className="size-3.5" />
-          Tạo phiếu mới
-        </Button>
+        {can('EVALUATIONS', 'create') && (
+          <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
+            <Plus className="size-3.5" />
+            Tạo phiếu mới
+          </Button>
+        )}
       </div>
 
       {loading && <p className="text-sm text-muted-foreground">Đang tải...</p>}

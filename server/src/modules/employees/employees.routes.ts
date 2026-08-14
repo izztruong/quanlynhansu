@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { asyncHandler } from '@/common/async-handler';
-import { requireAdmin } from '@/common/auth-middleware';
+import { requirePermission } from '@/common/permissions';
 import { employeesController } from './employees.controller';
 
 const upload = multer({
@@ -12,28 +12,32 @@ const upload = multer({
 export const employeesRouter = Router();
 
 // Excel routes go before /:id so "export"/"import-template" aren't matched as an id.
-employeesRouter.get('/export', asyncHandler(employeesController.exportExcel));
-employeesRouter.get('/import-template', asyncHandler(employeesController.importTemplate));
+employeesRouter.get('/export', requirePermission('EMPLOYEES'), asyncHandler(employeesController.exportExcel));
+employeesRouter.get(
+  '/import-template',
+  requirePermission('EMPLOYEES'),
+  asyncHandler(employeesController.importTemplate)
+);
 employeesRouter.post(
   '/import',
-  requireAdmin,
+  requirePermission('EMPLOYEES'),
   upload.single('file'),
   asyncHandler(employeesController.importExcel)
 );
 
-employeesRouter.get('/', asyncHandler(employeesController.list));
-employeesRouter.get('/:id', asyncHandler(employeesController.getById));
-employeesRouter.post('/', requireAdmin, asyncHandler(employeesController.create));
-employeesRouter.put('/:id', requireAdmin, asyncHandler(employeesController.update));
-employeesRouter.patch('/:id/type', requireAdmin, asyncHandler(employeesController.changeType));
+employeesRouter.get('/', requirePermission('EMPLOYEES'), asyncHandler(employeesController.list));
+employeesRouter.get('/:id', requirePermission('EMPLOYEES'), asyncHandler(employeesController.getById));
+employeesRouter.post('/', requirePermission('EMPLOYEES'), asyncHandler(employeesController.create));
+employeesRouter.put('/:id', requirePermission('EMPLOYEES'), asyncHandler(employeesController.update));
+employeesRouter.patch('/:id/type', requirePermission('EMPLOYEES'), asyncHandler(employeesController.changeType));
 employeesRouter.patch(
   '/:id/position',
-  requireAdmin,
+  requirePermission('EMPLOYEES'),
   asyncHandler(employeesController.changePosition)
 );
-employeesRouter.patch('/:id/branch', requireAdmin, asyncHandler(employeesController.changeBranch));
+employeesRouter.patch('/:id/branch', requirePermission('EMPLOYEES'), asyncHandler(employeesController.changeBranch));
 employeesRouter.patch(
   '/:id/terminate',
-  requireAdmin,
+  requirePermission('EMPLOYEES'),
   asyncHandler(employeesController.terminate)
 );

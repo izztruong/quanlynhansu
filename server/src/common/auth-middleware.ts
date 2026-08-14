@@ -52,10 +52,3 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   next();
 }
 
-export function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  if (!req.user?.isAdmin) {
-    res.status(403).json({ message: 'Bạn không có quyền thực hiện thao tác này' });
-    return;
-  }
-  next();
-}

@@ -12,6 +12,10 @@ import { notificationsRouter } from '@/modules/notifications/notifications.route
 import { uploadsRouter } from '@/modules/uploads/uploads.routes';
 import { evaluationsRouter } from '@/modules/evaluations/evaluations.routes';
 import { evaluationCriteriaRouter } from '@/modules/evaluation-criteria/evaluation-criteria.routes';
+import { trainingCriteriaRouter } from '@/modules/training-criteria/training-criteria.routes';
+import { trainingLogsRouter } from '@/modules/training-logs/training-logs.routes';
+import { workReviewSectionsRouter } from '@/modules/work-review-sections/work-review-sections.routes';
+import { workReviewsRouter } from '@/modules/work-reviews/work-reviews.routes';
 
 export const apiRouter = Router();
 
@@ -28,3 +32,7 @@ apiRouter.use('/notifications', notificationsRouter);
 apiRouter.use('/uploads', uploadsRouter);
 apiRouter.use('/evaluations', evaluationsRouter);
 apiRouter.use('/evaluation-criteria', evaluationCriteriaRouter);
+apiRouter.use('/training-criteria', trainingCriteriaRouter);
+apiRouter.use('/training-logs', trainingLogsRouter);
+apiRouter.use('/work-review-sections', workReviewSectionsRouter);
+apiRouter.use('/work-reviews', workReviewsRouter);

@@ -63,6 +63,7 @@ export default function LevelPage() {
   return (
     <div className="space-y-4">
       <CrudTable
+        resource="LEVELS"
         items={items}
         loading={loading}
         onAdd={openAdd}

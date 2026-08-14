@@ -37,12 +37,21 @@ export interface Department {
   status: RecordStatus;
 }
 
+export interface PermissionResource {
+  resource: string;
+  label: string;
+}
+
 export interface Position {
   id: string;
   name: string;
   description: string | null;
   accessScopes: string[];
   status: RecordStatus;
+  /** Chức vụ hệ thống (Chủ thương hiệu): luôn toàn quyền, không sửa/xoá được. */
+  isSystem: boolean;
+  /** Mã quyền dạng RESOURCE.ACTION, vd "EMPLOYEES.ADD". */
+  permissions: string[];
 }
 
 export interface Level {
@@ -161,6 +170,93 @@ export interface EvaluationForm {
   createdAt: string;
   answers: EvaluationAnswer[];
   attachments: EvaluationAttachment[];
+}
+
+export type TrainingLogStatus = 'IN_PROGRESS' | 'COMPLETED';
+
+export interface TrainingCriteria {
+  id: string;
+  groupId: string;
+  name: string;
+  maxScore: number;
+  order: number;
+  status: RecordStatus;
+}
+
+export interface TrainingCriteriaGroup {
+  id: string;
+  departmentId: string;
+  department: Department;
+  name: string;
+  order: number;
+  status: RecordStatus;
+  criteria: TrainingCriteria[];
+}
+
+export interface TrainingSession {
+  id: string;
+  sessionNumber: number;
+  sessionDate: string | null;
+  learnedContent: string | null;
+  assignedTasks: string | null;
+  evalAppearance: string | null;
+  evalCommunication: string | null;
+  evalPractice: string | null;
+}
+
+export interface TrainingScore {
+  id: string;
+  criteriaId: string | null;
+  groupName: string;
+  criteriaName: string;
+  maxScore: number;
+  score: number;
+  note: string | null;
+}
+
+export interface TrainingLog {
+  id: string;
+  employeeId: string;
+  employee: Employee;
+  branch: Branch;
+  department: Department;
+  mentor: Employee | null;
+  startDate: string | null;
+  endDate: string | null;
+  status: TrainingLogStatus;
+  overallOpinion: string | null;
+  createdBy: Employee | null;
+  createdAt: string;
+  sessions: TrainingSession[];
+  scores: TrainingScore[];
+}
+
+export interface WorkReviewSection {
+  id: string;
+  name: string;
+  order: number;
+  status: RecordStatus;
+}
+
+export interface WorkReviewNote {
+  id: string;
+  sectionId: string | null;
+  sectionName: string;
+  content: string;
+  order: number;
+}
+
+export interface WorkReview {
+  id: string;
+  employeeId: string;
+  employee: Employee;
+  weekStartDate: string;
+  reviewer: Employee | null;
+  score: number;
+  maxScore: number;
+  createdBy: Employee | null;
+  createdAt: string;
+  notes: WorkReviewNote[];
 }
 
 export type EmployeeGroupScope = 'ALL' | 'FULL_TIME' | 'PART_TIME' | 'SPECIFIC';

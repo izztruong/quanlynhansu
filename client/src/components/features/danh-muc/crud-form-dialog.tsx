@@ -21,6 +21,8 @@ interface CrudFormDialogProps {
   children: ReactNode;
   /** Tailwind max-width override for wide forms, e.g. "sm:max-w-2xl" */
   contentClassName?: string;
+  /** Ẩn nút Lưu khi dialog chỉ để xem (vd chức vụ hệ thống). */
+  hideSubmit?: boolean;
 }
 
 export function CrudFormDialog({
@@ -31,6 +33,7 @@ export function CrudFormDialog({
   onSubmit,
   children,
   contentClassName,
+  hideSubmit,
 }: CrudFormDialogProps) {
   const [submitting, setSubmitting] = useState(false);
 
@@ -58,11 +61,13 @@ export function CrudFormDialog({
           <div className="grid flex-1 gap-4 overflow-y-auto px-4 py-4">{children}</div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Huỷ
+              {hideSubmit ? 'Đóng' : 'Huỷ'}
             </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Đang lưu...' : 'Lưu'}
-            </Button>
+            {!hideSubmit && (
+              <Button type="submit" disabled={submitting}>
+                {submitting ? 'Đang lưu...' : 'Lưu'}
+              </Button>
+            )}
           </DialogFooter>
         </form>
       </DialogContent>
