@@ -1,5 +1,6 @@
 import { prisma } from '@/config/prisma';
 import { NotFoundError } from '@/common/errors';
+import type { EmployeeScopeWhere } from '@/common/data-scope';
 import type { CreateWorkReviewInput, UpdateWorkReviewInput } from './work-reviews.dto';
 
 const include = {
@@ -27,23 +28,25 @@ function usableNotes(notes: CreateWorkReviewInput['notes']) {
 }
 
 export const workReviewsService = {
-  list(employeeId?: string) {
+  list(employeeId?: string, scope: EmployeeScopeWhere = {}) {
     return prisma.workReview.findMany({
-      where: employeeId ? { employeeId } : undefined,
+      where: { ...(employeeId ? { employeeId } : {}), ...scope },
       orderBy: [{ weekStartDate: 'desc' }, { createdAt: 'desc' }],
       include,
     });
   },
 
-  async getById(id: string) {
-    const review = await prisma.workReview.findUnique({ where: { id }, include });
+  // Phạm vi trộn thẳng vào where nên phiếu ngoài quán trả 404 chứ không 403 —
+  // vừa chặn, vừa không hé lộ phiếu đó có tồn tại hay không.
+  async getById(id: string, scope: EmployeeScopeWhere = {}) {
+    const review = await prisma.workReview.findFirst({ where: { id, ...scope }, include });
     if (!review) throw new NotFoundError('Không tìm thấy phiếu đánh giá tuần');
     return review;
   },
 
-  getLatestForEmployee(employeeId: string) {
+  getLatestForEmployee(employeeId: string, scope: EmployeeScopeWhere = {}) {
     return prisma.workReview.findFirst({
-      where: { employeeId },
+      where: { employeeId, ...scope },
       orderBy: [{ weekStartDate: 'desc' }, { createdAt: 'desc' }],
       include,
     });
@@ -63,8 +66,12 @@ export const workReviewsService = {
 
   // Ghi chú thay trọn bộ: chúng chỉ là giá trị con của phiếu nên xoá rồi
   // tạo lại đơn giản và chắc chắn hơn so từng dòng.
-  async update(id: string, { notes, weekStartDate, ...rest }: UpdateWorkReviewInput) {
-    await this.getById(id);
+  async update(
+    id: string,
+    { notes, weekStartDate, ...rest }: UpdateWorkReviewInput,
+    scope: EmployeeScopeWhere = {}
+  ) {
+    await this.getById(id, scope);
 
     return prisma.$transaction(async (tx) => {
       if (notes) {
@@ -82,8 +89,8 @@ export const workReviewsService = {
     });
   },
 
-  async remove(id: string) {
-    await this.getById(id);
+  async remove(id: string, scope: EmployeeScopeWhere = {}) {
+    await this.getById(id, scope);
     // notes có onDelete: Cascade nên tự dọn theo.
     await prisma.workReview.delete({ where: { id } });
   },

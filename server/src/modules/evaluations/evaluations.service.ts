@@ -1,5 +1,6 @@
 import { prisma } from '@/config/prisma';
 import { NotFoundError } from '@/common/errors';
+import type { EmployeeScopeWhere } from '@/common/data-scope';
 import { uploadsService } from '@/modules/uploads/uploads.service';
 import type { CreateEvaluationInput } from './evaluations.dto';
 
@@ -41,21 +42,21 @@ export const evaluationsService = {
 
   // All forms across every employee, for the management page — attachment
   // signed URLs aren't resolved here since the list view only needs counts.
-  list() {
-    return prisma.evaluationForm.findMany({ orderBy: { createdAt: 'desc' }, include });
+  list(scope: EmployeeScopeWhere = {}) {
+    return prisma.evaluationForm.findMany({ where: scope, orderBy: { createdAt: 'desc' }, include });
   },
 
-  listForEmployee(employeeId: string) {
+  listForEmployee(employeeId: string, scope: EmployeeScopeWhere = {}) {
     return prisma.evaluationForm.findMany({
-      where: { employeeId },
+      where: { employeeId, ...scope },
       orderBy: { createdAt: 'desc' },
       include,
     });
   },
 
-  async getLatestForEmployee(employeeId: string) {
+  async getLatestForEmployee(employeeId: string, scope: EmployeeScopeWhere = {}) {
     const form = await prisma.evaluationForm.findFirst({
-      where: { employeeId },
+      where: { employeeId, ...scope },
       orderBy: { createdAt: 'desc' },
       include,
     });
@@ -63,15 +64,17 @@ export const evaluationsService = {
     return withAttachmentUrls(form);
   },
 
-  async getById(id: string) {
-    const form = await prisma.evaluationForm.findUnique({ where: { id }, include });
+  // Phạm vi trộn thẳng vào where nên phiếu ngoài quán trả 404 chứ không 403 —
+  // vừa chặn, vừa không hé lộ phiếu đó có tồn tại hay không.
+  async getById(id: string, scope: EmployeeScopeWhere = {}) {
+    const form = await prisma.evaluationForm.findFirst({ where: { id, ...scope }, include });
     if (!form) throw new NotFoundError('Không tìm thấy phiếu đánh giá');
     return withAttachmentUrls(form);
   },
 
-  async remove(id: string) {
-    const form = await prisma.evaluationForm.findUnique({
-      where: { id },
+  async remove(id: string, scope: EmployeeScopeWhere = {}) {
+    const form = await prisma.evaluationForm.findFirst({
+      where: { id, ...scope },
       select: { attachments: { select: { key: true } } },
     });
     if (!form) throw new NotFoundError('Không tìm thấy phiếu đánh giá');

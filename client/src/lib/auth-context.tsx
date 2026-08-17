@@ -19,6 +19,8 @@ type CurrentUser = Employee & {
   isSystem?: boolean;
   /** Mã quyền dạng RESOURCE.ACTION, vd "EMPLOYEES.ADD". */
   permissions?: string[];
+  /** Phạm vi dữ liệu, suy từ mã EMPLOYEES.SCOPE_* phía server. */
+  dataScope?: 'SELF' | 'BRANCH' | 'ALL';
 };
 
 export type PermissionAction = 'view' | 'create' | 'update' | 'delete';

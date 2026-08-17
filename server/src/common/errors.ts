@@ -18,3 +18,9 @@ export class BadRequestError extends ApiError {
     super(400, message);
   }
 }
+
+export class ForbiddenError extends ApiError {
+  constructor(message = 'Bạn không có quyền thực hiện thao tác này') {
+    super(403, message);
+  }
+}

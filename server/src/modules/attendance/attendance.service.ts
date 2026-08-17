@@ -1,5 +1,6 @@
 import { prisma } from '@/config/prisma';
 import { BadRequestError } from '@/common/errors';
+import type { EmployeeScopeWhere } from '@/common/data-scope';
 import type { CheckInInput, ListAttendanceQuery } from './attendance.dto';
 
 const include = {
@@ -25,15 +26,25 @@ function computeCheckInStatus(shiftStartTime: string | undefined, checkInAt: Dat
 }
 
 export const attendanceService = {
-  list({ from, to, branchId, departmentId, employeeId }: ListAttendanceQuery) {
+  // Phạm vi để trong AND chứ không trộn chung object `employee`, xem chú
+  // thích cùng loại ở schedules.service.ts.
+  list(
+    { from, to, branchId, departmentId, employeeId }: ListAttendanceQuery,
+    scope: EmployeeScopeWhere = {}
+  ) {
     return prisma.attendance.findMany({
       where: {
-        date: { gte: new Date(from), lte: new Date(to) },
-        employeeId: employeeId || undefined,
-        employee: {
-          branchId: branchId || undefined,
-          departmentId: departmentId || undefined,
-        },
+        AND: [
+          {
+            date: { gte: new Date(from), lte: new Date(to) },
+            employeeId: employeeId || undefined,
+            employee: {
+              branchId: branchId || undefined,
+              departmentId: departmentId || undefined,
+            },
+          },
+          scope,
+        ],
       },
       include,
       orderBy: { date: 'asc' },

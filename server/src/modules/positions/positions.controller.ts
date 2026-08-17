@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { getAccess } from '@/common/permissions';
 import { positionsService } from './positions.service';
 import { createPositionSchema, updatePositionSchema } from './positions.dto';
 
@@ -15,13 +16,15 @@ export const positionsController = {
 
   async create(req: Request, res: Response) {
     const input = createPositionSchema.parse(req.body);
-    const position = await positionsService.create(input);
+    const { permissions } = await getAccess(req);
+    const position = await positionsService.create(input, permissions);
     res.status(201).json({ data: position });
   },
 
   async update(req: Request, res: Response) {
     const input = updatePositionSchema.parse(req.body);
-    const position = await positionsService.update(req.params.id, input);
+    const { permissions } = await getAccess(req);
+    const position = await positionsService.update(req.params.id, input, permissions);
     res.json({ data: position });
   },
 

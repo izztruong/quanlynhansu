@@ -37,9 +37,17 @@ export interface Department {
   status: RecordStatus;
 }
 
+export interface PermissionScopeOption {
+  /** null = mức hẹp nhất, biểu diễn bằng việc không lưu mã nào. */
+  code: string | null;
+  label: string;
+}
+
 export interface PermissionResource {
   resource: string;
   label: string;
+  /** Chỉ chức năng nào có phạm vi dữ liệu mới kèm mảng này. */
+  scopes?: PermissionScopeOption[];
 }
 
 export interface Position {

@@ -1,10 +1,11 @@
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/config/prisma';
 import { NotFoundError } from '@/common/errors';
 import type { CreateBranchInput, UpdateBranchInput } from './branches.dto';
 
 export const branchesService = {
-  list() {
-    return prisma.branch.findMany({ orderBy: { createdAt: 'asc' } });
+  list(where: Prisma.BranchWhereInput = {}) {
+    return prisma.branch.findMany({ where, orderBy: { createdAt: 'asc' } });
   },
 
   async getById(id: string) {

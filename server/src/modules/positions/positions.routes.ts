@@ -1,14 +1,26 @@
 import { Router } from 'express';
 import { asyncHandler } from '@/common/async-handler';
-import { PERMISSION_RESOURCES, requirePermission } from '@/common/permissions';
+import {
+  EXTRA_CODES,
+  PERMISSION_RESOURCES,
+  SCOPE_OPTIONS,
+  requirePermission,
+} from '@/common/permissions';
 import { positionsController } from './positions.controller';
 
 export const positionsRouter = Router();
 
 // Danh sách chức năng phân quyền được — đặt trước "/:id" để không bị bắt
 // nhầm làm id. Ai đăng nhập cũng đọc được vì đây chỉ là danh mục tĩnh.
+//
+// Kèm luôn lựa chọn phạm vi của chức năng nào có, để giao diện không phải
+// đoán chức năng nào bày thêm khối phạm vi.
 positionsRouter.get('/permission-resources', (_req, res) => {
-  res.json({ data: PERMISSION_RESOURCES });
+  const data = PERMISSION_RESOURCES.map((r) => ({
+    ...r,
+    scopes: EXTRA_CODES[r.resource] ? SCOPE_OPTIONS : undefined,
+  }));
+  res.json({ data });
 });
 
 positionsRouter.get('/', asyncHandler(positionsController.list));

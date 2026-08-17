@@ -1,5 +1,6 @@
 import { prisma } from '@/config/prisma';
 import { NotFoundError } from '@/common/errors';
+import type { EmployeeScopeWhere } from '@/common/data-scope';
 import type { CreateTrainingLogInput, UpdateTrainingLogInput } from './training-logs.dto';
 
 const include = {
@@ -20,16 +21,18 @@ function toDate(value?: string | null) {
 }
 
 export const trainingLogsService = {
-  list(employeeId?: string) {
+  list(employeeId?: string, scope: EmployeeScopeWhere = {}) {
     return prisma.trainingLog.findMany({
-      where: employeeId ? { employeeId } : undefined,
+      where: { ...(employeeId ? { employeeId } : {}), ...scope },
       orderBy: { createdAt: 'desc' },
       include,
     });
   },
 
-  async getById(id: string) {
-    const log = await prisma.trainingLog.findUnique({ where: { id }, include });
+  // Phạm vi trộn thẳng vào where nên phiếu ngoài quán trả 404 chứ không 403 —
+  // vừa chặn, vừa không hé lộ phiếu đó có tồn tại hay không.
+  async getById(id: string, scope: EmployeeScopeWhere = {}) {
+    const log = await prisma.trainingLog.findFirst({ where: { id, ...scope }, include });
     if (!log) throw new NotFoundError('Không tìm thấy phiếu học việc');
     return log;
   },
@@ -52,8 +55,12 @@ export const trainingLogsService = {
 
   // Buổi và điểm được thay trọn bộ: chúng chỉ là giá trị con của phiếu, nên
   // xoá rồi tạo lại đơn giản và chắc chắn hơn là so từng dòng một.
-  async update(id: string, { sessions, scores, startDate, endDate, ...rest }: UpdateTrainingLogInput) {
-    await this.getById(id);
+  async update(
+    id: string,
+    { sessions, scores, startDate, endDate, ...rest }: UpdateTrainingLogInput,
+    scope: EmployeeScopeWhere = {}
+  ) {
+    await this.getById(id, scope);
 
     return prisma.$transaction(async (tx) => {
       if (sessions) {
@@ -82,8 +89,8 @@ export const trainingLogsService = {
     });
   },
 
-  async remove(id: string) {
-    await this.getById(id);
+  async remove(id: string, scope: EmployeeScopeWhere = {}) {
+    await this.getById(id, scope);
     // sessions/scores có onDelete: Cascade nên tự dọn theo.
     await prisma.trainingLog.delete({ where: { id } });
   },

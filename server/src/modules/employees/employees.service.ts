@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/config/prisma';
 import { NotFoundError } from '@/common/errors';
 import { uploadsService } from '@/modules/uploads/uploads.service';
@@ -43,7 +44,9 @@ async function withImageUrls<T extends { idFrontImageKey: string | null; idBackI
   return { ...employee, idFrontImageUrl, idBackImageUrl };
 }
 
-function parseEmployeeType(value: string): 'FULL_TIME' | 'PART_TIME' {
+// Cột tuỳ chọn có thể vắng hẳn trong file người dùng tự dựng, khi đó giá trị
+// là undefined chứ không phải chuỗi rỗng — mặc định '' để không vỡ cả dòng.
+function parseEmployeeType(value = ''): 'FULL_TIME' | 'PART_TIME' {
   const normalized = value.trim().toLowerCase();
   if (!normalized) return 'FULL_TIME';
   if (normalized === 'full-time' || normalized === 'fulltime') return 'FULL_TIME';
@@ -51,7 +54,7 @@ function parseEmployeeType(value: string): 'FULL_TIME' | 'PART_TIME' {
   throw new Error(`Loại nhân viên không hợp lệ: "${value}" (chỉ nhận Full-time / Part-time)`);
 }
 
-function parseGender(value: string): 'MALE' | 'FEMALE' | 'OTHER' | undefined {
+function parseGender(value = ''): 'MALE' | 'FEMALE' | 'OTHER' | undefined {
   const normalized = value.trim().toLowerCase();
   if (!normalized) return undefined;
   if (normalized === 'nam') return 'MALE';
@@ -60,7 +63,7 @@ function parseGender(value: string): 'MALE' | 'FEMALE' | 'OTHER' | undefined {
   throw new Error(`Giới tính không hợp lệ: "${value}" (chỉ nhận Nam / Nữ / Khác)`);
 }
 
-function parseStatus(value: string): 'WORKING' | 'TERMINATED' {
+function parseStatus(value = ''): 'WORKING' | 'TERMINATED' {
   const normalized = value.trim().toLowerCase();
   if (!normalized) return 'WORKING';
   if (normalized === 'đang làm việc' || normalized === 'dang lam viec') return 'WORKING';
@@ -68,8 +71,8 @@ function parseStatus(value: string): 'WORKING' | 'TERMINATED' {
   throw new Error(`Trạng thái không hợp lệ: "${value}" (chỉ nhận Đang làm việc / Đã nghỉ việc)`);
 }
 
-function parseNumber(value: string, label: string): number | undefined {
-  if (!value.trim()) return undefined;
+function parseNumber(value: string | undefined, label: string): number | undefined {
+  if (!value?.trim()) return undefined;
   const n = Number(value);
   if (Number.isNaN(n)) throw new Error(`${label} không hợp lệ: "${value}"`);
   return n;
@@ -88,16 +91,23 @@ interface ImportRowResult {
 }
 
 export const employeesService = {
-  list() {
-    return prisma.employee.findMany({ include, orderBy: { createdAt: 'asc' } });
+  list(where: Prisma.EmployeeWhereInput = {}) {
+    return prisma.employee.findMany({ where, include, orderBy: { createdAt: 'asc' } });
   },
 
-  async exportAll() {
-    const employees = await prisma.employee.findMany({ include, orderBy: { createdAt: 'asc' } });
+  // Xuất Excel đi đường riêng chứ không dùng lại list(), nên phạm vi phải
+  // truyền vào đây nữa — quên chỗ này là rò cả bảng qua một cú tải file.
+  async exportAll(where: Prisma.EmployeeWhereInput = {}) {
+    const employees = await prisma.employee.findMany({
+      where,
+      include,
+      orderBy: { createdAt: 'asc' },
+    });
     return buildExportWorkbook(employees);
   },
 
-  async importRows(rows: ImportRow[]): Promise<ImportRowResult[]> {
+  /** allowedBranchId = null nghĩa là không giới hạn chi nhánh. */
+  async importRows(rows: ImportRow[], allowedBranchId: string | null): Promise<ImportRowResult[]> {
     const [branches, departments, positions, levels] = await Promise.all([
       prisma.branch.findMany(),
       prisma.department.findMany(),
@@ -118,6 +128,9 @@ export const employeesService = {
 
         const branch = findByName(branches, row.branch);
         if (!branch) throw new Error(`Không tìm thấy chi nhánh "${row.branch}"`);
+        if (allowedBranchId && branch.id !== allowedBranchId) {
+          throw new Error(`Chi nhánh "${row.branch}" ngoài phạm vi quản lý của bạn`);
+        }
         const department = findByName(departments, row.department);
         if (!department) throw new Error(`Không tìm thấy bộ phận "${row.department}"`);
         const position = findByName(positions, row.position);
@@ -150,6 +163,11 @@ export const employeesService = {
         };
 
         const existing = await prisma.employee.findUnique({ where: { code: row.code } });
+        // Chặn cả đầu nguồn: không có dòng này thì chỉ cần điền mã nhân viên
+        // quán khác kèm tên quán mình là kéo được người ta sang.
+        if (existing && allowedBranchId && existing.branchId !== allowedBranchId) {
+          throw new Error(`Nhân viên "${row.code}" ngoài phạm vi quản lý của bạn`);
+        }
         if (existing) {
           await prisma.employee.update({ where: { id: existing.id }, data });
           results.push({ row: rowNumber, code: row.code, status: 'updated' });
